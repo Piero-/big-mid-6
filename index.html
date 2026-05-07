@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tour Virtual Banreservas</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div class="brand-lockup">
+          <div class="brand-mark">
+            <span>HOYO</span>
+            <strong>20</strong>
+          </div>
+          <div>
+          <p class="eyebrow">Tabla de temporada</p>
+            <h1>Tour Virtual Banreservas</h1>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <label class="field compact">
+            <span>Categoría</span>
+            <select id="categorySelect">
+              <option value="A">A</option>
+              <option value="B">B</option>
+            </select>
+          </label>
+          <label class="field compact">
+            <span>Equipos</span>
+            <input id="teamCountInput" type="number" min="3" max="12" value="12" />
+          </label>
+          <label class="field compact">
+            <span>Semanas</span>
+            <input id="weekLimitInput" type="number" min="1" max="11" value="11" />
+          </label>
+          <label class="field bonus-field">
+            <span>Bono final DOP</span>
+            <input id="finalsBonusInput" type="number" min="0" step="1000" value="0" />
+          </label>
+          <details class="action-menu">
+            <summary class="button secondary">Datos</summary>
+            <div class="action-menu-list">
+              <button id="exportDataButton" class="menu-button" type="button">Guardar archivo</button>
+              <button id="importDataButton" class="menu-button" type="button">Cargar archivo</button>
+              <button id="resetButton" class="menu-button danger" type="button">Reiniciar datos</button>
+            </div>
+          </details>
+          <input id="importDataInput" type="file" accept="application/json,.json" hidden />
+          <details class="action-menu">
+            <summary class="button primary">Reportes</summary>
+            <div class="action-menu-list">
+              <button id="downloadWeekButton" class="menu-button" type="button">Reporte semana</button>
+              <button id="downloadOverallButton" class="menu-button" type="button">Reporte overall</button>
+            </div>
+          </details>
+        </div>
+      </header>
+
+      <section class="control-strip" aria-label="Controles de semana">
+        <label class="field">
+          <span>Semana activa</span>
+          <select id="weekSelect"></select>
+        </label>
+        <label class="switch">
+          <input id="doubleToggle" type="checkbox" />
+          <span class="switch-track"></span>
+          <span>Duplicar puntos esta semana</span>
+        </label>
+        <div class="current-week-score">
+          <span>Asignados esta semana</span>
+          <strong id="weekAssignedCount">0 / 12</strong>
+        </div>
+      </section>
+
+      <section class="workspace-grid">
+        <aside class="panel roster-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Equipos</p>
+              <h2>Grupo para arrastrar</h2>
+            </div>
+            <button id="toggleNamesButton" class="button secondary" type="button">Editar nombres</button>
+          </div>
+          <div id="teamEditorWrap" class="team-editor-wrap" hidden>
+            <div class="editor-actions">
+              <span>Nombrar equipos activos</span>
+              <button id="restoreNamesButton" class="icon-button" type="button" title="Restaurar nombres predeterminados">Reiniciar</button>
+            </div>
+            <div id="teamEditor" class="team-editor"></div>
+          </div>
+          <div class="pool-wrap is-priority">
+            <div class="pool-heading">
+              <span>Arrastra desde el grupo</span>
+              <span id="poolCount">12 disponibles</span>
+            </div>
+            <div id="teamPool" class="team-pool drop-zone" aria-label="Grupo de equipos sin colocar"></div>
+          </div>
+        </aside>
+
+        <section class="panel placement-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Posiciones</p>
+              <h2 id="placementTitle">Resultados semana 1</h2>
+              <p id="prizeSubtitle" class="prize-subtitle"></p>
+            </div>
+            <button id="clearWeekButton" class="button secondary" type="button">Limpiar semana</button>
+          </div>
+          <div id="placementGrid" class="placement-grid"></div>
+        </section>
+
+        <section class="panel standings-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">Overall</p>
+              <h2>Clasificación overall</h2>
+            </div>
+          </div>
+          <div id="standingsList" class="standings-list"></div>
+        </section>
+      </section>
+
+      <section class="panel report-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Historial</p>
+            <h2>Reportes</h2>
+          </div>
+        </div>
+        <div id="reportExport" class="report-export" hidden>
+          <div>
+            <strong id="reportExportStatus">Imagen del reporte lista</strong>
+            <span>Usa el enlace de guardar si tu navegador bloquea la descarga automática.</span>
+          </div>
+          <a id="reportDownloadLink" class="button primary" href="#" download="reporte-resultados-equipos.png">Guardar imagen</a>
+          <img id="reportPreview" alt="Vista previa del reporte generado" />
+        </div>
+        <div class="table-scroll">
+          <table id="reportTable"></table>
+        </div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
