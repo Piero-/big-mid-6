@@ -709,6 +709,7 @@ function createScoreControl(week, teamId) {
   input.addEventListener("click", (event) => event.stopPropagation());
   input.addEventListener("input", () => {
     input.value = input.value.toUpperCase().replace(/[^0-9+\-E]/g, "").slice(0, 3);
+    updateTeamGolfScore(week, teamId, input.value, { rerenderPlacements: false });
   });
   input.addEventListener("change", () => updateTeamGolfScore(week, teamId, input.value));
   input.addEventListener("keydown", (event) => {
@@ -721,7 +722,7 @@ function createScoreControl(week, teamId) {
   return label;
 }
 
-function updateTeamGolfScore(week, teamId, rawScore) {
+function updateTeamGolfScore(week, teamId, rawScore, options = {}) {
   if (!requireAdmin()) return;
   const score = normalizeGolfScore(rawScore);
   week.scores = week.scores || {};
@@ -729,6 +730,9 @@ function updateTeamGolfScore(week, teamId, rawScore) {
     week.scores[teamId] = score;
   } else {
     delete week.scores[teamId];
+  }
+  if (options.rerenderPlacements !== false) {
+    renderPlacements();
   }
   renderReport();
   saveState();
