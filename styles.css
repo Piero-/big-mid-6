@@ -668,7 +668,7 @@ select {
 }
 
 .payment-scroll {
-  max-height: 420px;
+  max-height: none;
 }
 
 .payment-table th,
@@ -750,6 +750,7 @@ select {
 
 .table-scroll {
   overflow-x: auto;
+  overflow-y: visible;
   border: 1px solid var(--line);
   border-radius: 8px;
 }

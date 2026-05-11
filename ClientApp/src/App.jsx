@@ -124,6 +124,8 @@ export default function App() {
             <span>Semana activa</span>
             <select id="weekSelect"></select>
           </label>
+          <button id="hideWeekButton" className="button secondary admin-only" type="button">Ocultar semana</button>
+          <button id="showWeeksButton" className="button secondary admin-only" type="button">Mostrar todas</button>
           <label className="switch">
             <input id="doubleToggle" type="checkbox" />
             <span className="switch-track"></span>

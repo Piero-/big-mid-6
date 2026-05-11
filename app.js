@@ -40,6 +40,8 @@ const els = {
   categorySelect: document.querySelector("#categorySelect"),
   teamCountInput: document.querySelector("#teamCountInput"),
   weekLimitInput: document.querySelector("#weekLimitInput"),
+  hideWeekButton: document.querySelector("#hideWeekButton"),
+  showWeeksButton: document.querySelector("#showWeeksButton"),
   finalDonationInput: document.querySelector("#finalDonationInput"),
   paymentTable: document.querySelector("#paymentTable"),
   paymentSummary: document.querySelector("#paymentSummary"),
@@ -89,6 +91,7 @@ function createCategoryState(overrides = {}) {
     paymentDefaultsVersion: PAYMENT_DEFAULTS_VERSION,
     finalDonation: 0,
     finalWeekFee: DEFAULT_FINAL_WEEK_FEE_DOP,
+    hiddenWeeks: [],
     inscriptionPaidTeamIds: [],
     teams: structuredClone(defaultTeams),
     weeks: Array.from({ length: MAX_WEEKS }, (_, index) => ({
@@ -128,6 +131,7 @@ function normalizeCategoryState(saved = {}) {
     paymentDefaultsVersion: PAYMENT_DEFAULTS_VERSION,
     finalDonation: Math.max(0, Number(saved.finalDonation) || 0),
     finalWeekFee: Math.max(0, Number(saved.finalWeekFee) || DEFAULT_FINAL_WEEK_FEE_DOP),
+    hiddenWeeks: normalizeHiddenWeeks(saved.hiddenWeeks),
     inscriptionPaidTeamIds: shouldPreservePayments ? normalizePaidTeamIds(saved.inscriptionPaidTeamIds) : [],
     teams,
     weeks,
@@ -138,6 +142,13 @@ function normalizePaidTeamIds(savedIds) {
   if (!Array.isArray(savedIds)) return defaultTeams.map((team) => team.id);
   const validIds = new Set(defaultTeams.map((team) => team.id));
   return savedIds.filter((teamId) => validIds.has(teamId));
+}
+
+function normalizeHiddenWeeks(savedWeeks) {
+  if (!Array.isArray(savedWeeks)) return [];
+  return [...new Set(savedWeeks.map(Number))]
+    .filter((week) => Number.isInteger(week) && week >= 1 && week <= MAX_WEEKS)
+    .sort((a, b) => a - b);
 }
 
 function loadAppState() {
@@ -424,6 +435,11 @@ function getActiveTeamIds() {
   return new Set(getActiveTeams().map((team) => team.id));
 }
 
+function visibleWeeks() {
+  const hidden = new Set(state.hiddenWeeks || []);
+  return state.weeks.slice(0, state.weekLimit).filter((week) => !hidden.has(week.week));
+}
+
 function isDoublePointsWeek(week) {
   return state.weekLimit > 1 && week.week === state.weekLimit - 1;
 }
@@ -543,6 +559,8 @@ function renderWeekOptions() {
   }
   els.doubleToggle.checked = isDoublePointsWeek(getWeek());
   els.doubleToggle.disabled = true;
+  els.hideWeekButton.textContent = `Ocultar semana ${activeWeek}`;
+  els.showWeeksButton.disabled = !state.hiddenWeeks?.length;
   els.placementTitle.textContent = `Resultados semana ${activeWeek}`;
   renderPrizeSubtitle();
 }
@@ -717,12 +735,12 @@ function renderStandings() {
 }
 
 function renderReport() {
-  const visibleWeeks = state.weeks.slice(0, state.weekLimit);
+  const visibleReportWeeks = visibleWeeks();
   const header = `
     <thead>
       <tr>
         <th>Equipo</th>
-        ${visibleWeeks
+        ${visibleReportWeeks
           .map(
             (week) =>
               `<th>Semana ${week.week}${isDoublePointsWeek(week) ? '<span class="double-badge">x2</span>' : ""}</th>`,
@@ -739,7 +757,7 @@ function renderReport() {
 
   const body = sortedTeams
     .map((team) => {
-      const weeklyCells = visibleWeeks
+      const weeklyCells = visibleReportWeeks
         .map((week) => `<td>${teamScoreForWeek(team.id, week).toLocaleString()}</td>`)
         .join("");
       return `<tr><td>${escapeHtml(team.name)}</td>${weeklyCells}<td>${team.total.toLocaleString()}</td></tr>`;
@@ -750,7 +768,7 @@ function renderReport() {
 }
 
 function renderPayments() {
-  const visibleWeeks = state.weeks.slice(0, state.weekLimit);
+  const visiblePaymentWeeks = visibleWeeks();
   const activeTeams = getActiveTeams();
   const inscriptionPaid = activePaidSet(state.inscriptionPaidTeamIds);
 
@@ -759,7 +777,7 @@ function renderPayments() {
       <tr>
         <th>Equipo</th>
         <th>Inscripción<br><span>${formatDop(INSCRIPTION_FEE_DOP)}</span></th>
-        ${visibleWeeks
+        ${visiblePaymentWeeks
           .map((week) => {
             const paymentText = isFinalsWeek(week)
               ? `<button class="amount-link" type="button" data-action="edit-final-fee">${formatDop(weekFee(week))}</button>`
@@ -773,7 +791,7 @@ function renderPayments() {
 
   const body = activeTeams
     .map((team) => {
-      const weeklyCells = visibleWeeks
+      const weeklyCells = visiblePaymentWeeks
         .map((week) => {
           const paid = activePaidSet(week.paidTeamIds).has(team.id);
           return `<td><input class="payment-check" type="checkbox" data-payment-type="week" data-week="${week.week}" data-team-id="${team.id}" ${
@@ -1306,6 +1324,24 @@ function handleFinalDonationChange() {
   saveState();
 }
 
+function hideActiveWeek() {
+  if (!requireAdmin()) return;
+  state.hiddenWeeks = normalizeHiddenWeeks([...(state.hiddenWeeks || []), activeWeek]);
+  renderPayments();
+  renderReport();
+  renderWeekOptions();
+  saveState();
+}
+
+function showAllWeeks() {
+  if (!requireAdmin()) return;
+  state.hiddenWeeks = [];
+  renderPayments();
+  renderReport();
+  renderWeekOptions();
+  saveState();
+}
+
 function openFinalFeeModal() {
   if (!requireAdmin()) return;
   els.finalFeeModalInput.value = state.finalWeekFee;
@@ -1376,6 +1412,8 @@ els.teamCountInput.addEventListener("change", handleTeamCountChange);
 
 els.finalDonationInput.addEventListener("input", handleFinalDonationChange);
 els.finalDonationInput.addEventListener("change", handleFinalDonationChange);
+els.hideWeekButton.addEventListener("click", hideActiveWeek);
+els.showWeeksButton.addEventListener("click", showAllWeeks);
 els.paymentTable.addEventListener("change", handlePaymentChange);
 els.paymentTable.addEventListener("click", handlePaymentClick);
 
