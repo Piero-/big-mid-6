@@ -473,6 +473,11 @@ function isDoublePointsWeek(week) {
   return state.weekLimit > 1 && week.week === state.weekLimit - 1;
 }
 
+function weekDisplayName(week) {
+  const weekNumber = typeof week === "number" ? week : week.week;
+  return weekNumber === state.weekLimit ? "GRAN FINAL" : `Semana ${weekNumber}`;
+}
+
 function teamScoreForWeek(teamId, week) {
   const placeIndex = week.placements.indexOf(teamId);
   if (placeIndex === -1 || placeIndex >= state.teamCount) return 0;
@@ -583,16 +588,15 @@ function renderWeekOptions() {
   for (let index = 1; index <= state.weekLimit; index += 1) {
     const option = document.createElement("option");
     option.value = String(index);
-    const labelParts = [`Semana ${index}`];
+    const labelParts = [weekDisplayName(index)];
     if (index === state.weekLimit - 1 && state.weekLimit > 1) labelParts.push("(x2)");
-    if (index === state.weekLimit) labelParts.push("(Final)");
     option.textContent = labelParts.join(" ");
     option.selected = index === activeWeek;
     els.weekSelect.append(option);
   }
   els.doubleToggle.checked = isDoublePointsWeek(getWeek());
   els.doubleToggle.disabled = true;
-  els.placementTitle.textContent = `Resultados semana ${activeWeek}`;
+  els.placementTitle.textContent = `Resultados ${weekDisplayName(activeWeek).toLowerCase()}`;
   renderPrizeSubtitle();
 }
 
@@ -828,7 +832,7 @@ function renderReport() {
         ${visibleReportWeeks
           .map(
             (week) =>
-              `<th>Semana ${week.week}${isDoublePointsWeek(week) ? '<span class="double-badge">x2</span>' : ""}</th>`,
+              `<th>${weekDisplayName(week)}${isDoublePointsWeek(week) ? '<span class="double-badge">x2</span>' : ""}</th>`,
           )
           .join("")}
         <th>Total</th>
@@ -873,7 +877,7 @@ function renderPayments() {
             const hideButton = isAdminMode()
               ? `<button class="week-hide-button" type="button" data-action="hide-week" data-week="${week.week}" title="Ocultar semana ${week.week}">Ocultar</button>`
               : "";
-            return `<th><div class="week-pay-head"><span>Semana ${week.week}</span><span class="week-pay-amount">${paymentText}</span>${hideButton}</div></th>`;
+            return `<th><div class="week-pay-head"><span>${weekDisplayName(week)}</span><span class="week-pay-amount">${paymentText}</span>${hideButton}</div></th>`;
           })
           .join("")}
       </tr>
@@ -906,8 +910,8 @@ function renderPayments() {
   const activeWeekPool = prizePool(getWeek());
   const totalPaid = totalCollected();
   const activeWeekSummary = isFinalsWeek(getWeek())
-    ? `Semana final: ${paidCountForWeek(getWeek())} pagos x ${formatDop(state.finalWeekFee)}, bolsa ${formatDop(activeWeekPool)}`
-    : `Semana ${activeWeek}: ${paidCountForWeek(getWeek())} pagos, bolsa ${formatDop(activeWeekPool)}`;
+    ? `GRAN FINAL: ${paidCountForWeek(getWeek())} pagos x ${formatDop(state.finalWeekFee)}, bolsa ${formatDop(activeWeekPool)}`
+    : `${weekDisplayName(activeWeek)}: ${paidCountForWeek(getWeek())} pagos, bolsa ${formatDop(activeWeekPool)}`;
   els.paymentSummary.textContent = `${inscriptionPaidCount()} inscripciones pagadas: ${formatDop(
     finalPoolFromInscriptions(),
   )} al pool final y ${formatDop(hostEarningsFromInscriptions())} para el host | Donación final: ${formatDop(
@@ -991,7 +995,7 @@ function importDataFile(event) {
 function renderPrizeSubtitle() {
   const week = getWeek();
   const poolDescription = isFinalsWeek(week)
-    ? `Semana final: ${inscriptionPaidCount()} inscripciones x ${formatDop(
+    ? `GRAN FINAL: ${inscriptionPaidCount()} inscripciones x ${formatDop(
         INSCRIPTION_FINAL_POOL_DOP,
       )} + ${paidCountForWeek(week)} pagos x ${formatDop(state.finalWeekFee)} + donación ${formatDop(
         finalDonation(),
@@ -1085,12 +1089,12 @@ async function downloadReportImage(mode = "week") {
   ctx.font = "900 44px Inter, Arial, sans-serif";
   ctx.fillText(`Tour Virtual Banreservas - Categoría ${appState.activeCategory}`, outerPadding + 166, 108);
   ctx.font = "900 27px Inter, Arial, sans-serif";
-  const reportTitle = isOverallReport ? "Reporte overall" : `Lugares semana ${activeWeek}${isFinalsWeek(activeReportWeek) ? " final" : ""}`;
+  const reportTitle = isOverallReport ? "Reporte overall" : `Lugares ${weekDisplayName(activeWeek).toLowerCase()}`;
   ctx.fillText(reportTitle, outerPadding + 166, 148);
   ctx.fillStyle = "#824d2b";
   ctx.font = "800 18px Inter, Arial, sans-serif";
     const poolSource = isFinalsWeek(activeReportWeek)
-      ? `${inscriptionPaidCount()} inscripciones + ${paidCountForWeek(activeReportWeek)} pagos final + donación`
+      ? `${inscriptionPaidCount()} inscripciones + ${paidCountForWeek(activeReportWeek)} pagos GRAN FINAL + donación`
       : `${paidCountForWeek(activeReportWeek)} pagos semana`;
     const payoutLine = `${poolSource} | ${formatDop(prizePool(activeReportWeek))} en bolsa | 1ro ${formatDop(
       prizeForPlace(0, activeReportWeek),
