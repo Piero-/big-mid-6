@@ -787,7 +787,7 @@ function renderPayments() {
             const hideButton = isAdminMode()
               ? `<button class="week-hide-button" type="button" data-action="hide-week" data-week="${week.week}" title="Ocultar semana ${week.week}">Ocultar</button>`
               : "";
-            return `<th><div class="week-pay-head"><span>Semana ${week.week}</span>${hideButton}</div><span>${paymentText}</span></th>`;
+            return `<th><div class="week-pay-head"><span>Semana ${week.week}</span><span class="week-pay-amount">${paymentText}</span>${hideButton}</div></th>`;
           })
           .join("")}
       </tr>
