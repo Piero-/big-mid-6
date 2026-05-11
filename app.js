@@ -220,11 +220,15 @@ async function pollForRemoteUpdates() {
 }
 
 function applyRemoteState(remoteState) {
+  const currentCategory = appState.activeCategory;
+  const currentWeek = activeWeek;
   isApplyingRemoteState = true;
   Object.keys(appState).forEach((key) => delete appState[key]);
   Object.assign(appState, remoteState);
-  state = appState.categories[appState.activeCategory];
-  activeWeek = state.activeWeek || 1;
+  appState.activeCategory = currentCategory;
+  state = appState.categories[currentCategory];
+  activeWeek = clamp(currentWeek, 1, state.weekLimit);
+  state.activeWeek = activeWeek;
   selectedTeamId = null;
   els.reportExport.hidden = true;
   lastKnownStateJson = JSON.stringify(appState);
