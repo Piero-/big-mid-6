@@ -1,0 +1,7 @@
+{
+  "name": "tour-virtual-banreservas-root",
+  "private": true,
+  "scripts": {
+    "build": "npm --prefix ClientApp install && npm --prefix ClientApp run build"
+  }
+}

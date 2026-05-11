@@ -1,0 +1,11 @@
+{
+  "framework": "vite",
+  "buildCommand": "npm run build",
+  "outputDirectory": "ClientApp/dist",
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://tour-virtual-banreservas-api.onrender.com/api/$1"
+    }
+  ]
+}
