@@ -12,6 +12,8 @@ const MEDAL_TONES = ["gold", "silver", "bronze"];
 const LOGO_SRC = "assets/pnglogo.png";
 const PAYMENT_DEFAULTS_VERSION = 2;
 const API_STATE_URL = window.TOUR_API_STATE_URL || "/api/state";
+const SYNC_POLL_INTERVAL_MS = 5000;
+const LOCAL_SAVE_GRACE_MS = 2500;
 
 const defaultTeams = Array.from({ length: MAX_TEAMS }, (_, index) => ({
   id: `team-${index + 1}`,
@@ -23,6 +25,9 @@ let state = appState.categories[appState.activeCategory];
 let activeWeek = state.activeWeek || 1;
 let selectedTeamId = null;
 let apiSaveTimer = null;
+let isApplyingRemoteState = false;
+let lastLocalSaveAt = 0;
+let lastKnownStateJson = JSON.stringify(appState);
 
 const els = {
   categorySelect: document.querySelector("#categorySelect"),
@@ -168,19 +173,72 @@ function saveState() {
   state.activeWeek = activeWeek;
   appState.categories[appState.activeCategory] = state;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
-  queueApiSave();
+  lastKnownStateJson = JSON.stringify(appState);
+  if (!isApplyingRemoteState) {
+    lastLocalSaveAt = Date.now();
+    queueApiSave();
+  }
 }
 
 function queueApiSave() {
   if (!window.fetch || !API_STATE_URL) return;
   window.clearTimeout(apiSaveTimer);
   apiSaveTimer = window.setTimeout(() => {
+    apiSaveTimer = null;
     fetch(API_STATE_URL, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(appState),
-    }).catch((error) => console.warn("No se pudo guardar en el backend", error));
+    })
+      .then(() => {
+        lastKnownStateJson = JSON.stringify(appState);
+      })
+      .catch((error) => console.warn("No se pudo guardar en el backend", error));
   }, 350);
+}
+
+async function pollForRemoteUpdates() {
+  if (!window.fetch || !API_STATE_URL || isApplyingRemoteState) return;
+  if (apiSaveTimer || Date.now() - lastLocalSaveAt < LOCAL_SAVE_GRACE_MS) return;
+  if (isUserActivelyEditing()) return;
+
+  try {
+    const response = await fetch(API_STATE_URL, { cache: "no-store" });
+    if (!response.ok) return;
+
+    const remotePayload = await response.json();
+    if (!remotePayload) return;
+
+    const remoteState = normalizeAppStatePayload(remotePayload.data || remotePayload);
+    const remoteJson = JSON.stringify(remoteState);
+    if (remoteJson === lastKnownStateJson) return;
+
+    applyRemoteState(remoteState);
+  } catch (error) {
+    console.warn("No se pudo sincronizar el estado remoto", error);
+  }
+}
+
+function applyRemoteState(remoteState) {
+  isApplyingRemoteState = true;
+  Object.keys(appState).forEach((key) => delete appState[key]);
+  Object.assign(appState, remoteState);
+  state = appState.categories[appState.activeCategory];
+  activeWeek = state.activeWeek || 1;
+  selectedTeamId = null;
+  els.reportExport.hidden = true;
+  lastKnownStateJson = JSON.stringify(appState);
+  render();
+  isApplyingRemoteState = false;
+}
+
+function isUserActivelyEditing() {
+  const activeElement = document.activeElement;
+  if (!activeElement) return false;
+  return ["INPUT", "SELECT", "TEXTAREA"].includes(activeElement.tagName)
+    || activeElement.isContentEditable
+    || selectedTeamId !== null
+    || !els.finalFeeModal.hidden;
 }
 
 function clamp(value, min, max) {
@@ -1223,3 +1281,4 @@ els.teamPool.addEventListener("click", () => {
 });
 
 render();
+window.setInterval(pollForRemoteUpdates, SYNC_POLL_INTERVAL_MS);
