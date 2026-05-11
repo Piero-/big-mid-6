@@ -697,6 +697,29 @@ select {
   font-weight: 950;
 }
 
+.week-pay-head {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.week-hide-button {
+  min-height: 0;
+  border: 1px solid rgba(0, 103, 71, 0.18);
+  border-radius: 999px;
+  padding: 2px 7px;
+  background: rgba(0, 103, 71, 0.08);
+  color: #006747;
+  font-size: 0.62rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.week-hide-button:hover {
+  background: rgba(0, 103, 71, 0.16);
+}
+
 .payment-check {
   width: 22px;
   height: 22px;

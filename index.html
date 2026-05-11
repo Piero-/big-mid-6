@@ -47,7 +47,7 @@
             <span>Donación final DOP</span>
             <input id="finalDonationInput" type="number" min="0" step="1000" value="0" />
           </label>
-          <details class="action-menu admin-only">
+          <details class="action-menu admin-only" hidden>
             <summary class="button menu-trigger">Datos</summary>
             <div class="action-menu-list">
               <button id="exportDataButton" class="menu-button" type="button">Guardar archivo</button>
@@ -73,8 +73,6 @@
           <span>Semana activa</span>
           <select id="weekSelect"></select>
         </label>
-        <button id="hideWeekButton" class="button secondary admin-only" type="button">Ocultar semana</button>
-        <button id="showWeeksButton" class="button secondary admin-only" type="button">Mostrar todas</button>
         <label class="switch">
           <input id="doubleToggle" type="checkbox" />
           <span class="switch-track"></span>
@@ -141,6 +139,7 @@
             <h2>Pagos por equipo</h2>
             <p id="paymentSummary" class="prize-subtitle"></p>
           </div>
+          <button id="showWeeksButton" class="button secondary admin-only" type="button">Mostrar semanas</button>
         </div>
         <div class="table-scroll payment-scroll">
           <table id="paymentTable" class="payment-table"></table>

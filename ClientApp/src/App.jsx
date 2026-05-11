@@ -98,7 +98,7 @@ export default function App() {
               <span>Donación final DOP</span>
               <input id="finalDonationInput" type="number" min="0" step="1000" defaultValue="0" />
             </label>
-            <details className="action-menu admin-only">
+            <details className="action-menu admin-only" hidden>
               <summary className="button menu-trigger">Datos</summary>
               <div className="action-menu-list">
                 <button id="exportDataButton" className="menu-button" type="button">Guardar archivo</button>
@@ -124,8 +124,6 @@ export default function App() {
             <span>Semana activa</span>
             <select id="weekSelect"></select>
           </label>
-          <button id="hideWeekButton" className="button secondary admin-only" type="button">Ocultar semana</button>
-          <button id="showWeeksButton" className="button secondary admin-only" type="button">Mostrar todas</button>
           <label className="switch">
             <input id="doubleToggle" type="checkbox" />
             <span className="switch-track"></span>
@@ -192,6 +190,7 @@ export default function App() {
               <h2>Pagos por equipo</h2>
               <p id="paymentSummary" className="prize-subtitle"></p>
             </div>
+            <button id="showWeeksButton" className="button secondary admin-only" type="button">Mostrar semanas</button>
           </div>
           <div className="table-scroll payment-scroll">
             <table id="paymentTable" className="payment-table"></table>

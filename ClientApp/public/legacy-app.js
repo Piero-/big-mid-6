@@ -40,7 +40,6 @@ const els = {
   categorySelect: document.querySelector("#categorySelect"),
   teamCountInput: document.querySelector("#teamCountInput"),
   weekLimitInput: document.querySelector("#weekLimitInput"),
-  hideWeekButton: document.querySelector("#hideWeekButton"),
   showWeeksButton: document.querySelector("#showWeeksButton"),
   finalDonationInput: document.querySelector("#finalDonationInput"),
   paymentTable: document.querySelector("#paymentTable"),
@@ -435,6 +434,12 @@ function getActiveTeamIds() {
   return new Set(getActiveTeams().map((team) => team.id));
 }
 
+function sortedTeamsForTables() {
+  return getActiveTeams()
+    .map((team) => ({ ...team, total: teamTotal(team.id) }))
+    .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+}
+
 function visibleWeeks() {
   const hidden = new Set(state.hiddenWeeks || []);
   return state.weeks.slice(0, state.weekLimit).filter((week) => !hidden.has(week.week));
@@ -559,8 +564,6 @@ function renderWeekOptions() {
   }
   els.doubleToggle.checked = isDoublePointsWeek(getWeek());
   els.doubleToggle.disabled = true;
-  els.hideWeekButton.textContent = `Ocultar semana ${activeWeek}`;
-  els.showWeeksButton.disabled = !state.hiddenWeeks?.length;
   els.placementTitle.textContent = `Resultados semana ${activeWeek}`;
   renderPrizeSubtitle();
 }
@@ -751,9 +754,7 @@ function renderReport() {
     </thead>
   `;
 
-  const sortedTeams = getActiveTeams()
-    .map((team) => ({ ...team, total: teamTotal(team.id) }))
-    .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+  const sortedTeams = sortedTeamsForTables();
 
   const body = sortedTeams
     .map((team) => {
@@ -769,8 +770,9 @@ function renderReport() {
 
 function renderPayments() {
   const visiblePaymentWeeks = visibleWeeks();
-  const activeTeams = getActiveTeams();
+  const activeTeams = sortedTeamsForTables();
   const inscriptionPaid = activePaidSet(state.inscriptionPaidTeamIds);
+  els.showWeeksButton.disabled = !state.hiddenWeeks?.length;
 
   const header = `
     <thead>
@@ -782,7 +784,10 @@ function renderPayments() {
             const paymentText = isFinalsWeek(week)
               ? `<button class="amount-link" type="button" data-action="edit-final-fee">${formatDop(weekFee(week))}</button>`
               : formatDop(weekFee(week));
-            return `<th>Semana ${week.week}<br><span>${paymentText}</span></th>`;
+            const hideButton = isAdminMode()
+              ? `<button class="week-hide-button" type="button" data-action="hide-week" data-week="${week.week}" title="Ocultar semana ${week.week}">Ocultar</button>`
+              : "";
+            return `<th><div class="week-pay-head"><span>Semana ${week.week}</span>${hideButton}</div><span>${paymentText}</span></th>`;
           })
           .join("")}
       </tr>
@@ -1324,9 +1329,9 @@ function handleFinalDonationChange() {
   saveState();
 }
 
-function hideActiveWeek() {
+function hideWeek(weekNumber) {
   if (!requireAdmin()) return;
-  state.hiddenWeeks = normalizeHiddenWeeks([...(state.hiddenWeeks || []), activeWeek]);
+  state.hiddenWeeks = normalizeHiddenWeeks([...(state.hiddenWeeks || []), weekNumber]);
   renderPayments();
   renderReport();
   renderWeekOptions();
@@ -1392,6 +1397,12 @@ function handlePaymentChange(event) {
 
 function handlePaymentClick(event) {
   if (!requireAdmin()) return;
+  const hideWeekButton = event.target.closest('[data-action="hide-week"]');
+  if (hideWeekButton) {
+    hideWeek(Number(hideWeekButton.dataset.week));
+    return;
+  }
+
   const amountButton = event.target.closest('[data-action="edit-final-fee"]');
   if (amountButton) openFinalFeeModal();
 }
@@ -1412,7 +1423,6 @@ els.teamCountInput.addEventListener("change", handleTeamCountChange);
 
 els.finalDonationInput.addEventListener("input", handleFinalDonationChange);
 els.finalDonationInput.addEventListener("change", handleFinalDonationChange);
-els.hideWeekButton.addEventListener("click", hideActiveWeek);
 els.showWeeksButton.addEventListener("click", showAllWeeks);
 els.paymentTable.addEventListener("change", handlePaymentChange);
 els.paymentTable.addEventListener("click", handlePaymentClick);
