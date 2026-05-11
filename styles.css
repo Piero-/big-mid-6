@@ -1607,3 +1607,322 @@ body {
     height: 88px;
   }
 }
+
+@media (max-width: 900px) {
+  body {
+    background-size: 180% 180%, auto;
+  }
+
+  .app-shell {
+    width: min(100% - 16px, 1480px);
+    padding-top: 8px;
+    padding-bottom: 28px;
+  }
+
+  .topbar,
+  .control-strip,
+  .panel {
+    border-radius: 9px;
+  }
+
+  .topbar {
+    gap: 14px;
+    padding: 14px;
+  }
+
+  .brand-lockup {
+    width: 100%;
+    min-width: 0;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .brand-mark {
+    flex: 0 0 auto;
+    width: 86px;
+    height: 60px;
+    padding: 6px;
+  }
+
+  .topbar h1 {
+    max-width: 11ch;
+    font-size: clamp(1.55rem, 7vw, 2.15rem);
+    line-height: 1.02;
+  }
+
+  .topbar .eyebrow {
+    margin-bottom: 5px;
+    font-size: 0.64rem;
+  }
+
+  .golf-art {
+    min-width: 0;
+    width: 100%;
+    height: 72px;
+    order: 2;
+  }
+
+  .topbar-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: 8px;
+    order: 3;
+  }
+
+  .topbar-actions .field,
+  .topbar-actions .button,
+  .topbar-actions .login-button,
+  .topbar-actions .action-menu,
+  .topbar-actions .action-menu summary,
+  .topbar-actions .field input,
+  .topbar-actions .field select,
+  .topbar-actions .field.compact input,
+  .topbar-actions .field.compact select,
+  .topbar-actions .field.bonus-field input {
+    width: 100%;
+  }
+
+  .action-menu-list {
+    right: 0;
+    left: auto;
+    width: min(100%, 260px);
+  }
+
+  .presence-dots {
+    grid-column: 1 / -1;
+    justify-content: center;
+    min-height: 24px;
+    max-width: none;
+  }
+
+  .control-strip {
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .control-strip .field,
+  .control-strip .field select,
+  .control-strip .switch,
+  .current-week-score {
+    width: 100%;
+  }
+
+  .current-week-score {
+    justify-content: space-between;
+    min-width: 0;
+  }
+
+  .workspace-grid,
+  .is-viewer .workspace-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px;
+  }
+
+  .panel {
+    padding: 14px;
+  }
+
+  .panel-heading {
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .placement-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .place-card,
+  .place-card.podium-card {
+    min-height: 116px;
+    padding: 12px;
+  }
+
+  .place-card.podium-card .place-rank strong {
+    font-size: 1.45rem;
+  }
+
+  .team-chip {
+    width: 100%;
+    min-height: 38px;
+    justify-content: center;
+  }
+
+  .score-editor {
+    grid-template-columns: 1fr;
+    justify-items: start;
+  }
+
+  .score-editor input {
+    width: 100%;
+    max-width: 128px;
+  }
+
+  .standing-row {
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 9px;
+    align-items: start;
+  }
+
+  .standing-row .points {
+    grid-column: 2;
+    justify-self: start;
+    font-size: 0.9rem;
+  }
+
+  .payments-panel,
+  .report-panel {
+    margin-top: 12px;
+  }
+
+  .report-export {
+    grid-template-columns: 1fr;
+  }
+
+  .report-export img {
+    width: 100%;
+  }
+
+  .table-scroll {
+    margin: 0 -2px;
+    border-radius: 8px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  table {
+    min-width: 720px;
+  }
+
+  th,
+  td,
+  .payment-table th,
+  .payment-table td {
+    padding: 9px 10px;
+    font-size: 0.82rem;
+  }
+}
+
+@media (max-width: 560px) {
+  .app-shell {
+    width: calc(100% - 10px);
+  }
+
+  .topbar {
+    padding: 12px;
+  }
+
+  .brand-mark {
+    width: 72px;
+    height: 52px;
+  }
+
+  .topbar h1 {
+    max-width: 10ch;
+    font-size: 1.5rem;
+  }
+
+  .golf-art {
+    display: none;
+  }
+
+  .topbar-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .action-menu-list {
+    position: fixed;
+    right: 10px;
+    left: 10px;
+    width: auto;
+  }
+
+  .control-strip .switch {
+    align-items: flex-start;
+  }
+
+  .placement-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .place-rank {
+    gap: 8px;
+  }
+
+  .panel-heading {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .panel-heading .button {
+    width: 100%;
+  }
+
+  .pool-heading,
+  .current-week-score {
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  table {
+    min-width: 640px;
+  }
+
+  th:first-child,
+  td:first-child,
+  .payment-table th:first-child,
+  .payment-table td:first-child {
+    min-width: 132px;
+    max-width: 150px;
+  }
+
+  .week-pay-head {
+    min-width: 72px;
+  }
+
+  .modal-backdrop {
+    padding: 12px;
+  }
+
+  .modal-card {
+    width: 100%;
+    padding: 16px;
+  }
+}
+
+@media (max-width: 420px) {
+  .topbar,
+  .control-strip,
+  .panel {
+    border-radius: 7px;
+  }
+
+  .brand-mark {
+    width: 64px;
+    height: 46px;
+  }
+
+  .topbar h1 {
+    font-size: 1.32rem;
+  }
+
+  .panel {
+    padding: 12px;
+  }
+
+  .place-card,
+  .place-card.podium-card {
+    padding: 10px;
+  }
+
+  table {
+    min-width: 600px;
+  }
+
+  th,
+  td,
+  .payment-table th,
+  .payment-table td {
+    padding: 8px;
+  }
+}
