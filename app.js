@@ -639,7 +639,7 @@ function renderPlacements() {
     } else {
       const empty = document.createElement("div");
       empty.className = "empty-slot";
-      empty.textContent = "Soltar equipo";
+      empty.textContent = isAdminMode() ? "Soltar equipo" : "TBD";
       drop.append(empty);
     }
 
