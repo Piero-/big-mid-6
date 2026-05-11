@@ -11,12 +11,21 @@
       <header class="topbar">
         <div class="brand-lockup">
           <div class="brand-mark">
-            <img src="assets/hoyo20-logo.svg" alt="HOYO 20" />
+            <img src="assets/pnglogo.png" alt="HOYO 20" />
           </div>
           <div>
           <p class="eyebrow">Tabla de temporada</p>
             <h1>Tour Virtual Banreservas</h1>
           </div>
+        </div>
+        <div class="golf-art" aria-hidden="true">
+          <span class="art-orbit art-orbit-one"></span>
+          <span class="art-orbit art-orbit-two"></span>
+          <span class="art-green"></span>
+          <span class="art-cup"></span>
+          <span class="art-flag"></span>
+          <span class="art-club"></span>
+          <span class="art-ball"></span>
         </div>
         <div class="topbar-actions">
           <label class="field compact">
@@ -35,11 +44,11 @@
             <input id="weekLimitInput" type="number" min="1" max="11" value="11" />
           </label>
           <label class="field bonus-field">
-            <span>Cuota final DOP</span>
-            <input id="finalWeekFeeInput" type="number" min="0" step="1000" value="9000" />
+            <span>Donación final DOP</span>
+            <input id="finalDonationInput" type="number" min="0" step="1000" value="0" />
           </label>
           <details class="action-menu">
-            <summary class="button secondary">Datos</summary>
+            <summary class="button menu-trigger">Datos</summary>
             <div class="action-menu-list">
               <button id="exportDataButton" class="menu-button" type="button">Guardar archivo</button>
               <button id="importDataButton" class="menu-button" type="button">Cargar archivo</button>
@@ -48,7 +57,7 @@
           </details>
           <input id="importDataInput" type="file" accept="application/json,.json" hidden />
           <details class="action-menu">
-            <summary class="button primary">Reportes</summary>
+            <summary class="button menu-trigger">Reportes</summary>
             <div class="action-menu-list">
               <button id="downloadWeekButton" class="menu-button" type="button">Reporte semana</button>
               <button id="downloadOverallButton" class="menu-button" type="button">Reporte overall</button>
@@ -65,7 +74,7 @@
         <label class="switch">
           <input id="doubleToggle" type="checkbox" />
           <span class="switch-track"></span>
-          <span>Duplicar puntos esta semana</span>
+          <span>Penúltima semana x2</span>
         </label>
         <div class="current-week-score">
           <span>Asignados esta semana</span>
@@ -154,6 +163,23 @@
         </div>
       </section>
     </main>
+
+    <div id="finalFeeModal" class="modal-backdrop" hidden>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="finalFeeTitle">
+        <div>
+          <p class="eyebrow">Final</p>
+          <h2 id="finalFeeTitle">Monto por equipo</h2>
+        </div>
+        <label class="field">
+          <span>Pago final DOP</span>
+          <input id="finalFeeModalInput" type="number" min="0" step="1000" value="9000" />
+        </label>
+        <div class="modal-actions">
+          <button id="cancelFinalFeeButton" class="button secondary" type="button">Cancelar</button>
+          <button id="saveFinalFeeButton" class="button primary" type="button">Guardar</button>
+        </div>
+      </div>
+    </div>
 
     <script src="app.js"></script>
   </body>

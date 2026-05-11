@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: tour-virtual-banreservas-api
+    runtime: docker
+    plan: free
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: ALLOWED_ORIGINS
+        value: http://localhost:5173,https://tour-virtual-banreservas.vercel.app

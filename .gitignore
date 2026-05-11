@@ -1,0 +1,12 @@
+bin/
+obj/
+node_modules/
+dist/
+wwwroot/
+.dotnet_home/
+.nuget/
+.appdata/
+.localappdata/
+*.db
+*.db-shm
+*.db-wal
