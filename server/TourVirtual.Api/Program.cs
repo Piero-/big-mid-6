@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -5,6 +6,8 @@ using TourVirtual.Api.Data;
 using TourVirtual.Api.Models;
 
 var builder = WebApplication.CreateBuilder(args);
+var activeViewers = new ConcurrentDictionary<string, DateTimeOffset>();
+var viewerTimeout = TimeSpan.FromSeconds(35);
 
 var port = Environment.GetEnvironmentVariable("PORT");
 if (!string.IsNullOrWhiteSpace(port))
@@ -81,6 +84,27 @@ app.MapPut("/api/state", async (JsonElement payload, AppDbContext db) =>
 
     await db.SaveChangesAsync();
     return Results.NoContent();
+});
+
+app.MapPost("/api/presence", (JsonElement payload) =>
+{
+    var viewerId = payload.TryGetProperty("viewerId", out var viewerIdProperty)
+        ? viewerIdProperty.GetString()
+        : null;
+
+    if (string.IsNullOrWhiteSpace(viewerId))
+    {
+        return Results.BadRequest(new { error = "viewerId is required" });
+    }
+
+    var now = DateTimeOffset.UtcNow;
+    activeViewers[viewerId] = now;
+    RemoveExpiredViewers(activeViewers, now, viewerTimeout);
+
+    return Results.Ok(new
+    {
+        activeViewers = activeViewers.Count
+    });
 });
 
 app.MapFallbackToFile("index.html");
@@ -182,4 +206,18 @@ static bool IsAllowedOrigin(string origin, IReadOnlyCollection<string> allowedOr
     return Uri.TryCreate(origin, UriKind.Absolute, out var uri)
         && uri.Scheme == Uri.UriSchemeHttps
         && uri.Host.EndsWith(".vercel.app", StringComparison.OrdinalIgnoreCase);
+}
+
+static void RemoveExpiredViewers(
+    ConcurrentDictionary<string, DateTimeOffset> activeViewers,
+    DateTimeOffset now,
+    TimeSpan viewerTimeout)
+{
+    foreach (var viewer in activeViewers)
+    {
+        if (now - viewer.Value > viewerTimeout)
+        {
+            activeViewers.TryRemove(viewer.Key, out _);
+        }
+    }
 }

@@ -12,8 +12,11 @@ const MEDAL_TONES = ["gold", "silver", "bronze"];
 const LOGO_SRC = "assets/pnglogo.png";
 const PAYMENT_DEFAULTS_VERSION = 2;
 const API_STATE_URL = window.TOUR_API_STATE_URL || "/api/state";
+const API_PRESENCE_URL = window.TOUR_API_PRESENCE_URL || API_STATE_URL.replace(/\/state$/, "/presence");
 const SYNC_POLL_INTERVAL_MS = 5000;
 const LOCAL_SAVE_GRACE_MS = 2500;
+const PRESENCE_HEARTBEAT_INTERVAL_MS = 15000;
+const PRESENCE_MAX_DOTS = 18;
 
 const defaultTeams = Array.from({ length: MAX_TEAMS }, (_, index) => ({
   id: `team-${index + 1}`,
@@ -28,6 +31,7 @@ let apiSaveTimer = null;
 let isApplyingRemoteState = false;
 let lastLocalSaveAt = 0;
 let lastKnownStateJson = JSON.stringify(appState);
+const viewerId = getViewerId();
 
 const els = {
   categorySelect: document.querySelector("#categorySelect"),
@@ -65,6 +69,7 @@ const els = {
   finalFeeModalInput: document.querySelector("#finalFeeModalInput"),
   cancelFinalFeeButton: document.querySelector("#cancelFinalFeeButton"),
   saveFinalFeeButton: document.querySelector("#saveFinalFeeButton"),
+  presenceDots: document.querySelector("#presenceDots"),
 };
 
 function createCategoryState(overrides = {}) {
@@ -243,6 +248,56 @@ function isUserActivelyEditing() {
     || activeElement.isContentEditable
     || selectedTeamId !== null
     || !els.finalFeeModal.hidden;
+}
+
+function getViewerId() {
+  const key = "tour-viewer-id";
+  const existingId = sessionStorage.getItem(key);
+  if (existingId) return existingId;
+
+  const nextId = window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  sessionStorage.setItem(key, nextId);
+  return nextId;
+}
+
+async function sendPresenceHeartbeat() {
+  if (!window.fetch || !API_PRESENCE_URL || !els.presenceDots) return;
+
+  try {
+    const response = await fetch(API_PRESENCE_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ viewerId }),
+      keepalive: true,
+    });
+
+    if (!response.ok) return;
+    const payload = await response.json();
+    renderPresenceDots(Number(payload.activeViewers) || 1);
+  } catch (error) {
+    console.warn("No se pudo actualizar la presencia en vivo", error);
+  }
+}
+
+function renderPresenceDots(count) {
+  if (!els.presenceDots) return;
+
+  const visibleDots = Math.min(count, PRESENCE_MAX_DOTS);
+  els.presenceDots.innerHTML = "";
+  els.presenceDots.title = `${count} persona${count === 1 ? "" : "s"} viendo en vivo`;
+
+  Array.from({ length: visibleDots }).forEach(() => {
+    const dot = document.createElement("span");
+    dot.className = "presence-dot";
+    els.presenceDots.append(dot);
+  });
+
+  if (count > PRESENCE_MAX_DOTS) {
+    const overflow = document.createElement("span");
+    overflow.className = "presence-overflow";
+    overflow.textContent = `+${count - PRESENCE_MAX_DOTS}`;
+    els.presenceDots.append(overflow);
+  }
 }
 
 function clamp(value, min, max) {
@@ -1286,3 +1341,5 @@ els.teamPool.addEventListener("click", () => {
 
 render();
 window.setInterval(pollForRemoteUpdates, SYNC_POLL_INTERVAL_MS);
+sendPresenceHeartbeat();
+window.setInterval(sendPresenceHeartbeat, PRESENCE_HEARTBEAT_INTERVAL_MS);

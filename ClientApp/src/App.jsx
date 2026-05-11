@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 const API_STATE_URL = `${API_BASE_URL}/api/state`;
+const API_PRESENCE_URL = `${API_BASE_URL}/api/presence`;
 
 export default function App() {
   const [ready, setReady] = useState(false);
@@ -22,6 +23,7 @@ export default function App() {
       }
 
       window.TOUR_API_STATE_URL = API_STATE_URL;
+      window.TOUR_API_PRESENCE_URL = API_PRESENCE_URL;
       if (!cancelled) setReady(true);
     }
 
@@ -110,6 +112,7 @@ export default function App() {
                 <button id="downloadOverallButton" className="menu-button" type="button">Reporte overall</button>
               </div>
             </details>
+            <div id="presenceDots" className="presence-dots" aria-label="Personas viendo en vivo"></div>
           </div>
         </header>
 
