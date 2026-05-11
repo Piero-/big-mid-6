@@ -36,7 +36,7 @@ builder.Services.AddCors(options =>
 
         if (allowedOrigins.Length > 0)
         {
-            policy.WithOrigins(allowedOrigins);
+            policy.SetIsOriginAllowed(origin => IsAllowedOrigin(origin, allowedOrigins));
         }
         else
         {
@@ -170,4 +170,16 @@ static string[] ResolveAllowedOrigins(IConfiguration configuration)
         .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
         .Where(origin => Uri.TryCreate(origin, UriKind.Absolute, out _))
         .ToArray();
+}
+
+static bool IsAllowedOrigin(string origin, IReadOnlyCollection<string> allowedOrigins)
+{
+    if (allowedOrigins.Contains(origin, StringComparer.OrdinalIgnoreCase))
+    {
+        return true;
+    }
+
+    return Uri.TryCreate(origin, UriKind.Absolute, out var uri)
+        && uri.Scheme == Uri.UriSchemeHttps
+        && uri.Host.EndsWith(".vercel.app", StringComparison.OrdinalIgnoreCase);
 }
