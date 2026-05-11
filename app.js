@@ -2,10 +2,13 @@ const POINTS_BY_PLACE = [500, 375, 265, 200, 150, 125, 100, 80, 65, 50, 40, 30];
 const MIN_TEAMS = 3;
 const MAX_TEAMS = 12;
 const MAX_WEEKS = 11;
-const ENTRY_FEE_DOP = 6000;
-const FINALS_FEE_DOP = 19000;
+const INSCRIPTION_FEE_DOP = 5000;
+const REGULAR_WEEK_FEE_DOP = 6000;
+const DEFAULT_FINAL_WEEK_FEE_DOP = 9000;
 const STORAGE_KEY = "team-results-tracker:v1";
 const MEDAL_TONES = ["gold", "silver", "bronze"];
+const LOGO_SRC = "assets/hoyo20-logo.svg";
+const PAYMENT_DEFAULTS_VERSION = 2;
 
 const defaultTeams = Array.from({ length: MAX_TEAMS }, (_, index) => ({
   id: `team-${index + 1}`,
@@ -21,7 +24,9 @@ const els = {
   categorySelect: document.querySelector("#categorySelect"),
   teamCountInput: document.querySelector("#teamCountInput"),
   weekLimitInput: document.querySelector("#weekLimitInput"),
-  finalsBonusInput: document.querySelector("#finalsBonusInput"),
+  finalWeekFeeInput: document.querySelector("#finalWeekFeeInput"),
+  paymentTable: document.querySelector("#paymentTable"),
+  paymentSummary: document.querySelector("#paymentSummary"),
   weekSelect: document.querySelector("#weekSelect"),
   doubleToggle: document.querySelector("#doubleToggle"),
   teamEditorWrap: document.querySelector("#teamEditorWrap"),
@@ -54,11 +59,14 @@ function createCategoryState(overrides = {}) {
     activeWeek: 1,
     teamCount: MAX_TEAMS,
     weekLimit: MAX_WEEKS,
-    finalsBonus: 0,
+    paymentDefaultsVersion: PAYMENT_DEFAULTS_VERSION,
+    finalWeekFee: DEFAULT_FINAL_WEEK_FEE_DOP,
+    inscriptionPaidTeamIds: [],
     teams: structuredClone(defaultTeams),
     weeks: Array.from({ length: MAX_WEEKS }, (_, index) => ({
       week: index + 1,
       doublePoints: false,
+      paidTeamIds: [],
       placements: Array(MAX_TEAMS).fill(null),
     })),
     ...overrides,
@@ -66,11 +74,13 @@ function createCategoryState(overrides = {}) {
 }
 
 function normalizeCategoryState(saved = {}) {
+  const shouldPreservePayments = Number(saved.paymentDefaultsVersion) >= PAYMENT_DEFAULTS_VERSION;
   const weeks = Array.from({ length: MAX_WEEKS }, (_, index) => {
     const savedWeek = saved.weeks?.[index] ?? {};
     return {
       week: index + 1,
       doublePoints: Boolean(savedWeek.doublePoints),
+      paidTeamIds: shouldPreservePayments ? normalizePaidTeamIds(savedWeek.paidTeamIds) : [],
       placements: Array.from({ length: MAX_TEAMS }, (_, placeIndex) => {
         const teamId = savedWeek.placements?.[placeIndex] ?? null;
         return typeof teamId === "string" ? teamId : null;
@@ -87,10 +97,18 @@ function normalizeCategoryState(saved = {}) {
     activeWeek: clamp(Number(saved.activeWeek) || 1, 1, MAX_WEEKS),
     teamCount: clamp(Number(saved.teamCount) || MAX_TEAMS, MIN_TEAMS, MAX_TEAMS),
     weekLimit: clamp(Number(saved.weekLimit) || MAX_WEEKS, 1, MAX_WEEKS),
-    finalsBonus: Math.max(0, Number(saved.finalsBonus) || 0),
+    paymentDefaultsVersion: PAYMENT_DEFAULTS_VERSION,
+    finalWeekFee: Math.max(0, Number(saved.finalWeekFee) || DEFAULT_FINAL_WEEK_FEE_DOP),
+    inscriptionPaidTeamIds: shouldPreservePayments ? normalizePaidTeamIds(saved.inscriptionPaidTeamIds) : [],
     teams,
     weeks,
   });
+}
+
+function normalizePaidTeamIds(savedIds) {
+  if (!Array.isArray(savedIds)) return defaultTeams.map((team) => team.id);
+  const validIds = new Set(defaultTeams.map((team) => team.id));
+  return savedIds.filter((teamId) => validIds.has(teamId));
 }
 
 function loadAppState() {
@@ -198,16 +216,44 @@ function activePlacementsSet() {
   return new Set(getWeek().placements.filter((teamId) => activeIds.has(teamId)));
 }
 
+function activePaidSet(ids) {
+  const activeIds = getActiveTeamIds();
+  return new Set(ids.filter((teamId) => activeIds.has(teamId)));
+}
+
+function weekFee(week) {
+  return isFinalsWeek(week) ? state.finalWeekFee : REGULAR_WEEK_FEE_DOP;
+}
+
+function paidCountForWeek(week) {
+  return activePaidSet(week.paidTeamIds).size;
+}
+
+function inscriptionPaidCount() {
+  return activePaidSet(state.inscriptionPaidTeamIds).size;
+}
+
+function setPayment(list, teamId, paid) {
+  const nextIds = new Set(list);
+  if (paid) {
+    nextIds.add(teamId);
+  } else {
+    nextIds.delete(teamId);
+  }
+  return Array.from(nextIds);
+}
+
 function render() {
   els.categorySelect.value = appState.activeCategory;
   els.teamCountInput.value = state.teamCount;
   els.weekLimitInput.value = state.weekLimit;
-  els.finalsBonusInput.value = state.finalsBonus;
+  els.finalWeekFeeInput.value = state.finalWeekFee;
   renderWeekOptions();
   renderTeamEditor();
   renderPool();
   renderPlacements();
   renderStandings();
+  renderPayments();
   renderReport();
   saveState();
 }
@@ -425,13 +471,68 @@ function renderReport() {
   els.reportTable.innerHTML = `${header}<tbody>${body}</tbody>`;
 }
 
+function renderPayments() {
+  const visibleWeeks = state.weeks.slice(0, state.weekLimit);
+  const activeTeams = getActiveTeams();
+  const inscriptionPaid = activePaidSet(state.inscriptionPaidTeamIds);
+
+  const header = `
+    <thead>
+      <tr>
+        <th>Equipo</th>
+        <th>Inscripción<br><span>${formatDop(INSCRIPTION_FEE_DOP)}</span></th>
+        ${visibleWeeks
+          .map((week) => `<th>Semana ${week.week}<br><span>${formatDop(weekFee(week))}</span></th>`)
+          .join("")}
+      </tr>
+    </thead>
+  `;
+
+  const body = activeTeams
+    .map((team) => {
+      const weeklyCells = visibleWeeks
+        .map((week) => {
+          const paid = activePaidSet(week.paidTeamIds).has(team.id);
+          return `<td><input class="payment-check" type="checkbox" data-payment-type="week" data-week="${week.week}" data-team-id="${team.id}" ${
+            paid ? "checked" : ""
+          } aria-label="${escapeHtml(team.name)} pagó semana ${week.week}" /></td>`;
+        })
+        .join("");
+
+      return `
+        <tr>
+          <td>${escapeHtml(team.name)}</td>
+          <td><input class="payment-check" type="checkbox" data-payment-type="inscription" data-team-id="${team.id}" ${
+            inscriptionPaid.has(team.id) ? "checked" : ""
+          } aria-label="${escapeHtml(team.name)} pagó inscripción" /></td>
+          ${weeklyCells}
+        </tr>
+      `;
+    })
+    .join("");
+
+  const activeWeekPool = prizePool(getWeek());
+  const totalPaid = totalCollected();
+  els.paymentSummary.textContent = `${inscriptionPaidCount()} inscripciones pagadas | Semana ${activeWeek}: ${paidCountForWeek(
+    getWeek(),
+  )} pagos, bolsa ${formatDop(activeWeekPool)} | Total cobrado: ${formatDop(totalPaid)}`;
+  els.paymentTable.innerHTML = `${header}<tbody>${body}</tbody>`;
+}
+
 function isFinalsWeek(week) {
   return week.week === state.weekLimit;
 }
 
 function prizePool(week = getWeek()) {
-  const perTeamFee = isFinalsWeek(week) ? FINALS_FEE_DOP : ENTRY_FEE_DOP;
-  return state.teamCount * perTeamFee + (isFinalsWeek(week) ? state.finalsBonus : 0);
+  const inscriptionPool = week.week === 1 ? inscriptionPaidCount() * INSCRIPTION_FEE_DOP : 0;
+  return paidCountForWeek(week) * weekFee(week) + inscriptionPool;
+}
+
+function totalCollected() {
+  const weeklyTotal = state.weeks
+    .slice(0, state.weekLimit)
+    .reduce((total, week) => total + paidCountForWeek(week) * weekFee(week), 0);
+  return weeklyTotal + inscriptionPaidCount() * INSCRIPTION_FEE_DOP;
 }
 
 function prizeForPlace(placeIndex, week = getWeek()) {
@@ -488,12 +589,12 @@ function importDataFile(event) {
 
 function renderPrizeSubtitle() {
   const week = getWeek();
-  const entryFee = isFinalsWeek(week) ? FINALS_FEE_DOP : ENTRY_FEE_DOP;
-  const bonusText = isFinalsWeek(week) && state.finalsBonus > 0 ? ` + ${formatDop(state.finalsBonus)} de bono` : "";
+  const feeLabel = isFinalsWeek(week) ? "cuota final" : "cuota semanal";
   const weekLabel = isFinalsWeek(week) ? "Semana final" : "Semana regular";
-  els.prizeSubtitle.textContent = `${weekLabel}: ${state.teamCount} equipos x DOP ${entryFee.toLocaleString(
-    "en-US",
-  )}${bonusText} = ${formatDop(prizePool(week))} en bolsa | 1ro ${formatDop(prizeForPlace(0, week))} | 2do ${formatDop(
+  const inscriptionText = week.week === 1 ? ` + ${formatDop(inscriptionPaidCount() * INSCRIPTION_FEE_DOP)} inscripción` : "";
+  els.prizeSubtitle.textContent = `${weekLabel}: ${paidCountForWeek(week)} pagos x ${formatDop(weekFee(week))} ${feeLabel}${inscriptionText} = ${formatDop(
+    prizePool(week),
+  )} en bolsa | 1ro ${formatDop(prizeForPlace(0, week))} | 2do ${formatDop(
     prizeForPlace(1, week),
   )} | 3ro ${formatDop(prizeForPlace(2, week))}`;
 }
@@ -538,13 +639,14 @@ function getReportTeams(activeReportWeek, mode) {
   return overallSorted;
 }
 
-function downloadReportImage(mode = "week") {
+async function downloadReportImage(mode = "week") {
   els.reportExport.hidden = false;
   els.reportExportStatus.textContent = "Generando imagen del reporte...";
 
   const activeReportWeek = getWeek();
   const sortedTeams = getReportTeams(activeReportWeek, mode);
   const isOverallReport = mode === "overall";
+  const reportLogo = await loadImage(LOGO_SRC).catch(() => null);
 
   const scale = 2;
   const size = 1600;
@@ -571,7 +673,7 @@ function downloadReportImage(mode = "week") {
   ctx.fill();
 
   drawRoundRect(ctx, outerPadding, 42, width - outerPadding * 2, 150, 24, "#f3ebd4");
-  drawBrandMark(ctx, outerPadding + 36, 70, 92);
+  drawReportLogo(ctx, reportLogo, outerPadding + 28, 64, 112, 106);
   ctx.fillStyle = "#006747";
   ctx.font = "900 46px Inter, Arial, sans-serif";
   ctx.fillText(`Tour Virtual Banreservas - Categoría ${appState.activeCategory}`, outerPadding + 150, 106);
@@ -580,7 +682,7 @@ function downloadReportImage(mode = "week") {
   ctx.fillText(reportTitle, outerPadding + 150, 146);
   ctx.fillStyle = "#824d2b";
   ctx.font = "800 18px Inter, Arial, sans-serif";
-  const payoutLine = `${state.teamCount} equipos | ${formatDop(prizePool())} en bolsa | 1ro ${formatDop(
+  const payoutLine = `${paidCountForWeek(activeReportWeek)} pagos semana | ${formatDop(prizePool(activeReportWeek))} en bolsa | 1ro ${formatDop(
     prizeForPlace(0, activeReportWeek),
   )} | 2do ${formatDop(prizeForPlace(1, activeReportWeek))} | 3ro ${formatDop(prizeForPlace(2, activeReportWeek))}`;
   ctx.fillText(payoutLine, outerPadding + 150, 174);
@@ -806,23 +908,38 @@ function drawMetricGrid(ctx, x, y, width, height, metrics, isPodium) {
     ctx.fillText(truncateText(ctx, value, metricWidth - 24), metricX + 12, y + (isPodium ? 62 : 43));
   });
 }
-function drawBrandMark(ctx, x, y, size) {
-  ctx.save();
-  ctx.fillStyle = "#f3ebd4";
-  ctx.strokeStyle = "#006747";
-  ctx.lineWidth = 4;
-  ctx.beginPath();
-  ctx.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.stroke();
-  ctx.fillStyle = "#006747";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.font = "900 16px Inter, Arial, sans-serif";
-  ctx.fillText("HOYO", x + size / 2, y + 34);
-  ctx.font = "900 34px Inter, Arial, sans-serif";
-  ctx.fillText("20", x + size / 2, y + 60);
-  ctx.restore();
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.addEventListener("load", () => resolve(image), { once: true });
+    image.addEventListener("error", reject, { once: true });
+    image.src = src;
+  });
+}
+
+function drawReportLogo(ctx, image, x, y, width, height) {
+  if (!image) {
+    drawRoundRect(ctx, x, y, width, height, 18, "#f3ebd4");
+    ctx.strokeStyle = "#006747";
+    ctx.lineWidth = 4;
+    strokeRoundRect(ctx, x, y, width, height, 18);
+    ctx.fillStyle = "#006747";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = "900 18px Inter, Arial, sans-serif";
+    ctx.fillText("HOYO 20", x + width / 2, y + height / 2);
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+    return;
+  }
+
+  const imageRatio = image.naturalWidth / image.naturalHeight;
+  const boxRatio = width / height;
+  const drawWidth = imageRatio > boxRatio ? width : height * imageRatio;
+  const drawHeight = imageRatio > boxRatio ? width / imageRatio : height;
+  const drawX = x + (width - drawWidth) / 2;
+  const drawY = y + (height - drawHeight) / 2;
+  ctx.drawImage(image, drawX, drawY, drawWidth, drawHeight);
 }
 
 function drawRoundRect(ctx, x, y, width, height, radius, fillStyle) {
@@ -875,10 +992,34 @@ function handleTeamCountChange() {
   render();
 }
 
-function handleFinalsBonusChange() {
-  state.finalsBonus = Math.max(0, Number(els.finalsBonusInput.value) || 0);
+function handleFinalWeekFeeChange() {
+  state.finalWeekFee = Math.max(0, Number(els.finalWeekFeeInput.value) || 0);
   renderPlacements();
   renderStandings();
+  renderPayments();
+  renderReport();
+  renderPrizeSubtitle();
+  saveState();
+}
+
+function handlePaymentChange(event) {
+  const checkbox = event.target.closest(".payment-check");
+  if (!checkbox) return;
+
+  const teamId = checkbox.dataset.teamId;
+  if (!getActiveTeamIds().has(teamId)) return;
+
+  if (checkbox.dataset.paymentType === "inscription") {
+    state.inscriptionPaidTeamIds = setPayment(state.inscriptionPaidTeamIds, teamId, checkbox.checked);
+  } else {
+    const week = state.weeks[Number(checkbox.dataset.week) - 1];
+    if (!week) return;
+    week.paidTeamIds = setPayment(week.paidTeamIds, teamId, checkbox.checked);
+  }
+
+  renderPlacements();
+  renderStandings();
+  renderPayments();
   renderReport();
   renderPrizeSubtitle();
   saveState();
@@ -892,8 +1033,9 @@ els.weekLimitInput.addEventListener("change", handleWeekLimitChange);
 els.teamCountInput.addEventListener("input", handleTeamCountChange);
 els.teamCountInput.addEventListener("change", handleTeamCountChange);
 
-els.finalsBonusInput.addEventListener("input", handleFinalsBonusChange);
-els.finalsBonusInput.addEventListener("change", handleFinalsBonusChange);
+els.finalWeekFeeInput.addEventListener("input", handleFinalWeekFeeChange);
+els.finalWeekFeeInput.addEventListener("change", handleFinalWeekFeeChange);
+els.paymentTable.addEventListener("change", handlePaymentChange);
 
 els.weekSelect.addEventListener("change", () => {
   activeWeek = Number(els.weekSelect.value);

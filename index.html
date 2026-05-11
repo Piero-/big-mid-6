@@ -11,8 +11,7 @@
       <header class="topbar">
         <div class="brand-lockup">
           <div class="brand-mark">
-            <span>HOYO</span>
-            <strong>20</strong>
+            <img src="assets/hoyo20-logo.svg" alt="HOYO 20" />
           </div>
           <div>
           <p class="eyebrow">Tabla de temporada</p>
@@ -36,8 +35,8 @@
             <input id="weekLimitInput" type="number" min="1" max="11" value="11" />
           </label>
           <label class="field bonus-field">
-            <span>Bono final DOP</span>
-            <input id="finalsBonusInput" type="number" min="0" step="1000" value="0" />
+            <span>Cuota final DOP</span>
+            <input id="finalWeekFeeInput" type="number" min="0" step="1000" value="9000" />
           </label>
           <details class="action-menu">
             <summary class="button secondary">Datos</summary>
@@ -120,6 +119,19 @@
           </div>
           <div id="standingsList" class="standings-list"></div>
         </section>
+      </section>
+
+      <section class="panel payments-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Pagos</p>
+            <h2>Pagos por equipo</h2>
+            <p id="paymentSummary" class="prize-subtitle"></p>
+          </div>
+        </div>
+        <div class="table-scroll payment-scroll">
+          <table id="paymentTable" class="payment-table"></table>
+        </div>
       </section>
 
       <section class="panel report-panel">
