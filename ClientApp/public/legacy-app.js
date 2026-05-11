@@ -13,6 +13,8 @@ const LOGO_SRC = "assets/pnglogo.png";
 const PAYMENT_DEFAULTS_VERSION = 2;
 const API_STATE_URL = window.TOUR_API_STATE_URL || "/api/state";
 const API_PRESENCE_URL = window.TOUR_API_PRESENCE_URL || API_STATE_URL.replace(/\/state$/, "/presence");
+const API_AUTH_URL = window.TOUR_API_AUTH_URL || API_STATE_URL.replace(/\/state$/, "/auth/login");
+const ADMIN_TOKEN_KEY = "tour-admin-token";
 const SYNC_POLL_INTERVAL_MS = 5000;
 const LOCAL_SAVE_GRACE_MS = 2500;
 const PRESENCE_HEARTBEAT_INTERVAL_MS = 15000;
@@ -32,6 +34,7 @@ let isApplyingRemoteState = false;
 let lastLocalSaveAt = 0;
 let lastKnownStateJson = JSON.stringify(appState);
 const viewerId = getViewerId();
+let adminToken = localStorage.getItem(ADMIN_TOKEN_KEY) || "";
 
 const els = {
   categorySelect: document.querySelector("#categorySelect"),
@@ -70,6 +73,12 @@ const els = {
   cancelFinalFeeButton: document.querySelector("#cancelFinalFeeButton"),
   saveFinalFeeButton: document.querySelector("#saveFinalFeeButton"),
   presenceDots: document.querySelector("#presenceDots"),
+  loginButton: document.querySelector("#loginButton"),
+  adminLoginModal: document.querySelector("#adminLoginModal"),
+  adminPasswordInput: document.querySelector("#adminPasswordInput"),
+  cancelLoginButton: document.querySelector("#cancelLoginButton"),
+  submitLoginButton: document.querySelector("#submitLoginButton"),
+  authError: document.querySelector("#authError"),
 };
 
 function createCategoryState(overrides = {}) {
@@ -179,27 +188,117 @@ function saveState() {
   appState.categories[appState.activeCategory] = state;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
   lastKnownStateJson = JSON.stringify(appState);
-  if (!isApplyingRemoteState) {
+  if (!isApplyingRemoteState && isAdminMode()) {
     lastLocalSaveAt = Date.now();
     queueApiSave();
   }
 }
 
 function queueApiSave() {
-  if (!window.fetch || !API_STATE_URL) return;
+  if (!window.fetch || !API_STATE_URL || !isAdminMode()) return;
   window.clearTimeout(apiSaveTimer);
   apiSaveTimer = window.setTimeout(() => {
     apiSaveTimer = null;
     fetch(API_STATE_URL, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${adminToken}`,
+      },
       body: JSON.stringify(appState),
     })
-      .then(() => {
+      .then((response) => {
+        if (response.status === 401) {
+          logoutAdmin();
+          return;
+        }
         lastKnownStateJson = JSON.stringify(appState);
       })
       .catch((error) => console.warn("No se pudo guardar en el backend", error));
   }, 350);
+}
+
+function isAdminMode() {
+  return Boolean(adminToken);
+}
+
+function requireAdmin() {
+  return isAdminMode();
+}
+
+function updateAccessUi() {
+  const isAdmin = isAdminMode();
+  document.body.classList.toggle("is-viewer", !isAdmin);
+  document.body.classList.toggle("is-admin", isAdmin);
+
+  if (els.loginButton) {
+    els.loginButton.textContent = isAdmin ? "Admin" : "Login";
+    els.loginButton.title = isAdmin ? "Cerrar modo edición" : "Entrar a modo edición";
+  }
+
+  [els.teamCountInput, els.weekLimitInput, els.finalDonationInput].forEach((input) => {
+    if (input) input.disabled = !isAdmin;
+  });
+
+  if (!isAdmin) {
+    closeActionMenus();
+    els.reportExport.hidden = true;
+    els.teamEditorWrap.hidden = true;
+    els.toggleNamesButton.textContent = "Editar nombres";
+  }
+}
+
+function openAdminLoginModal() {
+  if (!els.adminLoginModal) return;
+  els.authError.hidden = true;
+  els.adminPasswordInput.value = "";
+  els.adminLoginModal.hidden = false;
+  els.adminPasswordInput.focus();
+}
+
+function closeAdminLoginModal() {
+  if (!els.adminLoginModal) return;
+  els.adminLoginModal.hidden = true;
+}
+
+async function submitAdminLogin() {
+  if (!window.fetch || !API_AUTH_URL) return;
+
+  els.submitLoginButton.disabled = true;
+  els.authError.hidden = true;
+
+  try {
+    const response = await fetch(API_AUTH_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: els.adminPasswordInput.value }),
+    });
+
+    if (!response.ok) {
+      els.authError.hidden = false;
+      return;
+    }
+
+    const payload = await response.json();
+    adminToken = payload.token || "";
+    localStorage.setItem(ADMIN_TOKEN_KEY, adminToken);
+    closeAdminLoginModal();
+    updateAccessUi();
+    render();
+  } catch {
+    els.authError.hidden = false;
+  } finally {
+    els.submitLoginButton.disabled = false;
+  }
+}
+
+function logoutAdmin() {
+  adminToken = "";
+  localStorage.removeItem(ADMIN_TOKEN_KEY);
+  closeActionMenus();
+  selectedTeamId = null;
+  updateAccessUi();
+  render();
 }
 
 async function pollForRemoteUpdates() {
@@ -403,6 +502,7 @@ function setPayment(list, teamId, paid) {
 }
 
 function render() {
+  updateAccessUi();
   els.categorySelect.value = appState.activeCategory;
   els.teamCountInput.value = state.teamCount;
   els.weekLimitInput.value = state.weekLimit;
@@ -448,6 +548,11 @@ function renderWeekOptions() {
 }
 
 function renderTeamEditor() {
+  if (!isAdminMode()) {
+    els.teamEditor.innerHTML = "";
+    return;
+  }
+
   els.teamEditor.innerHTML = "";
   getActiveTeams().forEach((team, index) => {
     const row = document.createElement("label");
@@ -459,6 +564,7 @@ function renderTeamEditor() {
     input.maxLength = 32;
     input.setAttribute("aria-label", `Nombre del equipo ${index + 1}`);
     input.addEventListener("input", () => {
+      if (!requireAdmin()) return;
       team.name = input.value.trimStart() || `Equipo ${index + 1}`;
       saveState();
       renderPool();
@@ -518,6 +624,7 @@ function renderPlacements() {
 
     setupDropZone(card, "place", placeIndex);
     card.addEventListener("click", () => {
+      if (!requireAdmin()) return;
       if (selectedTeamId) moveTeam(selectedTeamId, "place", placeIndex);
     });
     els.placementGrid.append(card);
@@ -527,17 +634,22 @@ function renderPlacements() {
 function createTeamChip(team) {
   const chip = document.createElement("div");
   chip.className = "team-chip";
-  chip.draggable = true;
+  chip.draggable = isAdminMode();
   chip.dataset.teamId = team.id;
   chip.textContent = team.name;
   chip.classList.toggle("is-selected", selectedTeamId === team.id);
   chip.addEventListener("dragstart", (event) => {
+    if (!requireAdmin()) {
+      event.preventDefault();
+      return;
+    }
     event.dataTransfer.setData("text/plain", team.id);
     event.dataTransfer.effectAllowed = "move";
     chip.classList.add("is-dragging");
   });
   chip.addEventListener("dragend", () => chip.classList.remove("is-dragging"));
   chip.addEventListener("click", (event) => {
+    if (!requireAdmin()) return;
     event.stopPropagation();
     selectedTeamId = selectedTeamId === team.id ? null : team.id;
     renderPool();
@@ -548,11 +660,13 @@ function createTeamChip(team) {
 
 function setupDropZone(element, zoneType, placeIndex = null) {
   element.addEventListener("dragover", (event) => {
+    if (!requireAdmin()) return;
     event.preventDefault();
     element.classList.add("drag-over");
   });
   element.addEventListener("dragleave", () => element.classList.remove("drag-over"));
   element.addEventListener("drop", (event) => {
+    if (!requireAdmin()) return;
     event.preventDefault();
     element.classList.remove("drag-over");
     const teamId = event.dataTransfer.getData("text/plain");
@@ -561,6 +675,7 @@ function setupDropZone(element, zoneType, placeIndex = null) {
 }
 
 function moveTeam(teamId, zoneType, placeIndex) {
+  if (!requireAdmin()) return;
   if (!getActiveTeamIds().has(teamId)) return;
   const week = getWeek();
   const currentPlace = week.placements.indexOf(teamId);
@@ -719,6 +834,7 @@ function formatDop(value) {
 }
 
 function downloadDataFile() {
+  if (!requireAdmin()) return;
   saveState();
   const payload = {
     project: "Tour Virtual Banreservas",
@@ -739,6 +855,7 @@ function downloadDataFile() {
 }
 
 function importDataFile(event) {
+  if (!requireAdmin()) return;
   const file = event.target.files?.[0];
   event.target.value = "";
   if (!file) return;
@@ -819,6 +936,7 @@ function getReportTeams(activeReportWeek, mode) {
 }
 
 async function downloadReportImage(mode = "week") {
+  if (!requireAdmin()) return;
   try {
     els.reportExport.hidden = false;
     els.reportExportStatus.textContent = "Generando imagen del reporte...";
@@ -1163,6 +1281,7 @@ function truncateText(ctx, text, maxWidth) {
 }
 
 function handleWeekLimitChange() {
+  if (!requireAdmin()) return;
   state.weekLimit = clamp(Number(els.weekLimitInput.value) || MAX_WEEKS, 1, MAX_WEEKS);
   activeWeek = clamp(activeWeek, 1, state.weekLimit);
   state.activeWeek = activeWeek;
@@ -1170,12 +1289,14 @@ function handleWeekLimitChange() {
 }
 
 function handleTeamCountChange() {
+  if (!requireAdmin()) return;
   state.teamCount = clamp(Number(els.teamCountInput.value) || MAX_TEAMS, MIN_TEAMS, MAX_TEAMS);
   selectedTeamId = null;
   render();
 }
 
 function handleFinalDonationChange() {
+  if (!requireAdmin()) return;
   state.finalDonation = Math.max(0, Number(els.finalDonationInput.value) || 0);
   renderPlacements();
   renderStandings();
@@ -1186,6 +1307,7 @@ function handleFinalDonationChange() {
 }
 
 function openFinalFeeModal() {
+  if (!requireAdmin()) return;
   els.finalFeeModalInput.value = state.finalWeekFee;
   els.finalFeeModal.hidden = false;
   els.finalFeeModalInput.focus();
@@ -1197,6 +1319,7 @@ function closeFinalFeeModal() {
 }
 
 function saveFinalFee() {
+  if (!requireAdmin()) return;
   state.finalWeekFee = Math.max(0, Number(els.finalFeeModalInput.value) || 0);
   closeFinalFeeModal();
   renderPlacements();
@@ -1208,6 +1331,7 @@ function saveFinalFee() {
 }
 
 function handlePaymentChange(event) {
+  if (!requireAdmin()) return;
   const checkbox = event.target.closest(".payment-check");
   if (!checkbox) return;
 
@@ -1231,6 +1355,7 @@ function handlePaymentChange(event) {
 }
 
 function handlePaymentClick(event) {
+  if (!requireAdmin()) return;
   const amountButton = event.target.closest('[data-action="edit-final-fee"]');
   if (amountButton) openFinalFeeModal();
 }
@@ -1264,6 +1389,24 @@ els.finalFeeModalInput.addEventListener("keydown", (event) => {
   if (event.key === "Escape") closeFinalFeeModal();
 });
 
+els.loginButton.addEventListener("click", () => {
+  if (isAdminMode()) {
+    logoutAdmin();
+  } else {
+    openAdminLoginModal();
+  }
+});
+
+els.cancelLoginButton.addEventListener("click", closeAdminLoginModal);
+els.submitLoginButton.addEventListener("click", submitAdminLogin);
+els.adminLoginModal.addEventListener("click", (event) => {
+  if (event.target === els.adminLoginModal) closeAdminLoginModal();
+});
+els.adminPasswordInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") submitAdminLogin();
+  if (event.key === "Escape") closeAdminLoginModal();
+});
+
 document.querySelectorAll(".action-menu").forEach((menu) => {
   menu.addEventListener("toggle", () => {
     if (menu.open) closeActionMenus(menu);
@@ -1278,6 +1421,7 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
     closeActionMenus();
     closeFinalFeeModal();
+    closeAdminLoginModal();
   }
 });
 
@@ -1295,6 +1439,7 @@ els.doubleToggle.addEventListener("change", () => {
 });
 
 els.clearWeekButton.addEventListener("click", () => {
+  if (!requireAdmin()) return;
   getWeek().placements = Array(MAX_TEAMS).fill(null);
   renderPool();
   renderPlacements();
@@ -1304,6 +1449,7 @@ els.clearWeekButton.addEventListener("click", () => {
 });
 
 els.resetButton.addEventListener("click", () => {
+  if (!requireAdmin()) return;
   if (!confirm(`¿Reiniciar todos los datos de la categoría ${appState.activeCategory}?`)) return;
   state = createCategoryState();
   appState.categories[appState.activeCategory] = state;
@@ -1316,17 +1462,20 @@ els.resetButton.addEventListener("click", () => {
 els.exportDataButton.addEventListener("click", downloadDataFile);
 
 els.importDataButton.addEventListener("click", () => {
+  if (!requireAdmin()) return;
   els.importDataInput.click();
 });
 
 els.importDataInput.addEventListener("change", importDataFile);
 
 els.restoreNamesButton.addEventListener("click", () => {
+  if (!requireAdmin()) return;
   state.teams = structuredClone(defaultTeams);
   render();
 });
 
 els.toggleNamesButton.addEventListener("click", () => {
+  if (!requireAdmin()) return;
   const isHidden = els.teamEditorWrap.hidden;
   els.teamEditorWrap.hidden = !isHidden;
   els.toggleNamesButton.textContent = isHidden ? "Ocultar nombres" : "Editar nombres";
@@ -1336,6 +1485,7 @@ els.downloadWeekButton.addEventListener("click", () => downloadReportImage("week
 els.downloadOverallButton.addEventListener("click", () => downloadReportImage("overall"));
 setupDropZone(els.teamPool, "pool");
 els.teamPool.addEventListener("click", () => {
+  if (!requireAdmin()) return;
   if (selectedTeamId) moveTeam(selectedTeamId, "pool");
 });
 

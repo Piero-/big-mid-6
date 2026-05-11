@@ -7,7 +7,10 @@ using TourVirtual.Api.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 var activeViewers = new ConcurrentDictionary<string, DateTimeOffset>();
+var activeAdminSessions = new ConcurrentDictionary<string, DateTimeOffset>();
 var viewerTimeout = TimeSpan.FromSeconds(35);
+var adminSessionTimeout = TimeSpan.FromHours(12);
+var adminPassword = Environment.GetEnvironmentVariable("ADMIN_PASSWORD") ?? "hoyo2010";
 
 var port = Environment.GetEnvironmentVariable("PORT");
 if (!string.IsNullOrWhiteSpace(port))
@@ -66,8 +69,33 @@ app.MapGet("/api/state", async (AppDbContext db) =>
     return Results.Text(record?.Json ?? "null", "application/json");
 });
 
-app.MapPut("/api/state", async (JsonElement payload, AppDbContext db) =>
+app.MapPost("/api/auth/login", (JsonElement payload) =>
 {
+    var password = payload.TryGetProperty("password", out var passwordProperty)
+        ? passwordProperty.GetString()
+        : null;
+
+    if (password != adminPassword)
+    {
+        return Results.Unauthorized();
+    }
+
+    var token = Convert.ToBase64String(Guid.NewGuid().ToByteArray())
+        .Replace("+", "-", StringComparison.Ordinal)
+        .Replace("/", "_", StringComparison.Ordinal)
+        .TrimEnd('=');
+
+    activeAdminSessions[token] = DateTimeOffset.UtcNow;
+    return Results.Ok(new { token });
+});
+
+app.MapPut("/api/state", async (JsonElement payload, AppDbContext db, HttpContext httpContext) =>
+{
+    if (!IsAuthorizedAdmin(httpContext, activeAdminSessions, DateTimeOffset.UtcNow, adminSessionTimeout))
+    {
+        return Results.Unauthorized();
+    }
+
     var json = payload.GetRawText();
     var record = await db.AppStates.FirstOrDefaultAsync(item => item.Key == "default");
 
@@ -220,4 +248,32 @@ static void RemoveExpiredViewers(
             activeViewers.TryRemove(viewer.Key, out _);
         }
     }
+}
+
+static bool IsAuthorizedAdmin(
+    HttpContext httpContext,
+    ConcurrentDictionary<string, DateTimeOffset> activeAdminSessions,
+    DateTimeOffset now,
+    TimeSpan adminSessionTimeout)
+{
+    var header = httpContext.Request.Headers.Authorization.ToString();
+    const string bearerPrefix = "Bearer ";
+    var token = header.StartsWith(bearerPrefix, StringComparison.OrdinalIgnoreCase)
+        ? header[bearerPrefix.Length..].Trim()
+        : httpContext.Request.Headers["X-Admin-Token"].ToString();
+
+    if (string.IsNullOrWhiteSpace(token)
+        || !activeAdminSessions.TryGetValue(token, out var lastSeen)
+        || now - lastSeen > adminSessionTimeout)
+    {
+        if (!string.IsNullOrWhiteSpace(token))
+        {
+            activeAdminSessions.TryRemove(token, out _);
+        }
+
+        return false;
+    }
+
+    activeAdminSessions[token] = now;
+    return true;
 }

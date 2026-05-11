@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
 const API_STATE_URL = `${API_BASE_URL}/api/state`;
 const API_PRESENCE_URL = `${API_BASE_URL}/api/presence`;
+const API_AUTH_URL = `${API_BASE_URL}/api/auth/login`;
 
 export default function App() {
   const [ready, setReady] = useState(false);
@@ -24,6 +25,7 @@ export default function App() {
 
       window.TOUR_API_STATE_URL = API_STATE_URL;
       window.TOUR_API_PRESENCE_URL = API_PRESENCE_URL;
+      window.TOUR_API_AUTH_URL = API_AUTH_URL;
       if (!cancelled) setReady(true);
     }
 
@@ -84,19 +86,19 @@ export default function App() {
                 <option value="B">B</option>
               </select>
             </label>
-            <label className="field compact">
+            <label className="field compact admin-only">
               <span>Equipos</span>
               <input id="teamCountInput" type="number" min="3" max="12" defaultValue="12" />
             </label>
-            <label className="field compact">
+            <label className="field compact admin-only">
               <span>Semanas</span>
               <input id="weekLimitInput" type="number" min="1" max="11" defaultValue="11" />
             </label>
-            <label className="field bonus-field">
+            <label className="field bonus-field admin-only">
               <span>Donación final DOP</span>
               <input id="finalDonationInput" type="number" min="0" step="1000" defaultValue="0" />
             </label>
-            <details className="action-menu">
+            <details className="action-menu admin-only">
               <summary className="button menu-trigger">Datos</summary>
               <div className="action-menu-list">
                 <button id="exportDataButton" className="menu-button" type="button">Guardar archivo</button>
@@ -105,7 +107,7 @@ export default function App() {
               </div>
             </details>
             <input id="importDataInput" type="file" accept="application/json,.json" hidden />
-            <details className="action-menu">
+            <details className="action-menu admin-only">
               <summary className="button menu-trigger">Reportes</summary>
               <div className="action-menu-list">
                 <button id="downloadWeekButton" className="menu-button" type="button">Reporte semana</button>
@@ -113,6 +115,7 @@ export default function App() {
               </div>
             </details>
             <div id="presenceDots" className="presence-dots" aria-label="Personas viendo en vivo"></div>
+            <button id="loginButton" className="login-button" type="button">Login</button>
           </div>
         </header>
 
@@ -133,7 +136,7 @@ export default function App() {
         </section>
 
         <section className="workspace-grid">
-          <aside className="panel roster-panel">
+          <aside className="panel roster-panel admin-only">
             <div className="panel-heading">
               <div>
                 <p className="eyebrow">Equipos</p>
@@ -164,7 +167,7 @@ export default function App() {
                 <h2 id="placementTitle">Resultados semana 1</h2>
                 <p id="prizeSubtitle" className="prize-subtitle"></p>
               </div>
-              <button id="clearWeekButton" className="button secondary" type="button">Limpiar semana</button>
+              <button id="clearWeekButton" className="button secondary admin-only" type="button">Limpiar semana</button>
             </div>
             <div id="placementGrid" className="placement-grid"></div>
           </section>
@@ -180,7 +183,7 @@ export default function App() {
           </section>
         </section>
 
-        <section className="panel payments-panel">
+        <section className="panel payments-panel admin-only">
           <div className="panel-heading">
             <div>
               <p className="eyebrow">Pagos</p>
@@ -227,6 +230,24 @@ export default function App() {
           <div className="modal-actions">
             <button id="cancelFinalFeeButton" className="button secondary" type="button">Cancelar</button>
             <button id="saveFinalFeeButton" className="button primary" type="button">Guardar</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="adminLoginModal" className="modal-backdrop" hidden>
+        <div className="modal-card compact-modal" role="dialog" aria-modal="true" aria-labelledby="adminLoginTitle">
+          <div>
+            <p className="eyebrow">Acceso</p>
+            <h2 id="adminLoginTitle">Modo edición</h2>
+          </div>
+          <label className="field">
+            <span>Password</span>
+            <input id="adminPasswordInput" type="password" autoComplete="current-password" />
+          </label>
+          <p id="authError" className="auth-error" hidden>Password incorrecto.</p>
+          <div className="modal-actions">
+            <button id="cancelLoginButton" className="button secondary" type="button">Cancelar</button>
+            <button id="submitLoginButton" className="button primary" type="button">Entrar</button>
           </div>
         </div>
       </div>

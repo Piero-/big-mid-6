@@ -35,19 +35,19 @@
               <option value="B">B</option>
             </select>
           </label>
-          <label class="field compact">
+          <label class="field compact admin-only">
             <span>Equipos</span>
             <input id="teamCountInput" type="number" min="3" max="12" value="12" />
           </label>
-          <label class="field compact">
+          <label class="field compact admin-only">
             <span>Semanas</span>
             <input id="weekLimitInput" type="number" min="1" max="11" value="11" />
           </label>
-          <label class="field bonus-field">
+          <label class="field bonus-field admin-only">
             <span>Donación final DOP</span>
             <input id="finalDonationInput" type="number" min="0" step="1000" value="0" />
           </label>
-          <details class="action-menu">
+          <details class="action-menu admin-only">
             <summary class="button menu-trigger">Datos</summary>
             <div class="action-menu-list">
               <button id="exportDataButton" class="menu-button" type="button">Guardar archivo</button>
@@ -56,7 +56,7 @@
             </div>
           </details>
           <input id="importDataInput" type="file" accept="application/json,.json" hidden />
-          <details class="action-menu">
+          <details class="action-menu admin-only">
             <summary class="button menu-trigger">Reportes</summary>
             <div class="action-menu-list">
               <button id="downloadWeekButton" class="menu-button" type="button">Reporte semana</button>
@@ -64,6 +64,7 @@
             </div>
           </details>
           <div id="presenceDots" class="presence-dots" aria-label="Personas viendo en vivo"></div>
+          <button id="loginButton" class="login-button" type="button">Login</button>
         </div>
       </header>
 
@@ -84,7 +85,7 @@
       </section>
 
       <section class="workspace-grid">
-        <aside class="panel roster-panel">
+        <aside class="panel roster-panel admin-only">
           <div class="panel-heading">
             <div>
               <p class="eyebrow">Equipos</p>
@@ -115,7 +116,7 @@
               <h2 id="placementTitle">Resultados semana 1</h2>
               <p id="prizeSubtitle" class="prize-subtitle"></p>
             </div>
-            <button id="clearWeekButton" class="button secondary" type="button">Limpiar semana</button>
+            <button id="clearWeekButton" class="button secondary admin-only" type="button">Limpiar semana</button>
           </div>
           <div id="placementGrid" class="placement-grid"></div>
         </section>
@@ -131,7 +132,7 @@
         </section>
       </section>
 
-      <section class="panel payments-panel">
+      <section class="panel payments-panel admin-only">
         <div class="panel-heading">
           <div>
             <p class="eyebrow">Pagos</p>
@@ -179,9 +180,27 @@
           <button id="cancelFinalFeeButton" class="button secondary" type="button">Cancelar</button>
           <button id="saveFinalFeeButton" class="button primary" type="button">Guardar</button>
         </div>
+    </div>
+  </div>
+
+  <div id="adminLoginModal" class="modal-backdrop" hidden>
+    <div class="modal-card compact-modal" role="dialog" aria-modal="true" aria-labelledby="adminLoginTitle">
+      <div>
+        <p class="eyebrow">Acceso</p>
+        <h2 id="adminLoginTitle">Modo edición</h2>
+      </div>
+      <label class="field">
+        <span>Password</span>
+        <input id="adminPasswordInput" type="password" autocomplete="current-password" />
+      </label>
+      <p id="authError" class="auth-error" hidden>Password incorrecto.</p>
+      <div class="modal-actions">
+        <button id="cancelLoginButton" class="button secondary" type="button">Cancelar</button>
+        <button id="submitLoginButton" class="button primary" type="button">Entrar</button>
       </div>
     </div>
+  </div>
 
-    <script src="app.js"></script>
-  </body>
+  <script src="app.js"></script>
+</body>
 </html>
