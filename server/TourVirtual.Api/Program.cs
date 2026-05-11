@@ -116,6 +116,7 @@ static string ConvertDatabaseUrl(string databaseUrl)
 {
     var uri = new Uri(databaseUrl);
     var userInfo = uri.UserInfo.Split(':', 2);
+    var query = ParseQuery(uri.Query);
     var builder = new NpgsqlConnectionStringBuilder
     {
         Host = uri.Host,
@@ -123,10 +124,40 @@ static string ConvertDatabaseUrl(string databaseUrl)
         Database = uri.AbsolutePath.TrimStart('/'),
         Username = Uri.UnescapeDataString(userInfo.ElementAtOrDefault(0) ?? string.Empty),
         Password = Uri.UnescapeDataString(userInfo.ElementAtOrDefault(1) ?? string.Empty),
-        SslMode = SslMode.Require
+        SslMode = ResolveSslMode(query),
+        ChannelBinding = ResolveChannelBinding(query)
     };
 
     return builder.ConnectionString;
+}
+
+static Dictionary<string, string> ParseQuery(string query)
+{
+    return query
+        .TrimStart('?')
+        .Split('&', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Select(part => part.Split('=', 2))
+        .Where(parts => parts.Length == 2)
+        .ToDictionary(
+            parts => Uri.UnescapeDataString(parts[0]).Replace("_", string.Empty, StringComparison.OrdinalIgnoreCase),
+            parts => Uri.UnescapeDataString(parts[1]),
+            StringComparer.OrdinalIgnoreCase);
+}
+
+static SslMode ResolveSslMode(IReadOnlyDictionary<string, string> query)
+{
+    return query.TryGetValue("sslmode", out var sslMode)
+        && Enum.TryParse<SslMode>(sslMode, ignoreCase: true, out var parsed)
+            ? parsed
+            : SslMode.Require;
+}
+
+static ChannelBinding ResolveChannelBinding(IReadOnlyDictionary<string, string> query)
+{
+    return query.TryGetValue("channelbinding", out var channelBinding)
+        && Enum.TryParse<ChannelBinding>(channelBinding, ignoreCase: true, out var parsed)
+            ? parsed
+            : ChannelBinding.Prefer;
 }
 
 static string[] ResolveAllowedOrigins(IConfiguration configuration)
