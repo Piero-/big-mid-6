@@ -98,6 +98,7 @@ function createCategoryState(overrides = {}) {
       doublePoints: false,
       paidTeamIds: [],
       placements: Array(MAX_TEAMS).fill(null),
+      scores: {},
     })),
     ...overrides,
   };
@@ -115,6 +116,7 @@ function normalizeCategoryState(saved = {}) {
         const teamId = savedWeek.placements?.[placeIndex] ?? null;
         return typeof teamId === "string" ? teamId : null;
       }),
+      scores: normalizeScores(savedWeek.scores),
     };
   });
 
@@ -148,6 +150,28 @@ function normalizeHiddenWeeks(savedWeeks) {
   return [...new Set(savedWeeks.map(Number))]
     .filter((week) => Number.isInteger(week) && week >= 1 && week <= MAX_WEEKS)
     .sort((a, b) => a - b);
+}
+
+function normalizeScores(savedScores) {
+  if (!savedScores || typeof savedScores !== "object") return {};
+  const validIds = new Set(defaultTeams.map((team) => team.id));
+  return Object.fromEntries(
+    Object.entries(savedScores)
+      .filter(([teamId, score]) => validIds.has(teamId) && normalizeGolfScore(score))
+      .map(([teamId, score]) => [teamId, normalizeGolfScore(score)]),
+  );
+}
+
+function normalizeGolfScore(score) {
+  const value = String(score ?? "").trim().toUpperCase();
+  if (!value) return "";
+  if (value === "E") return "E";
+  if (/^[+-]?\d{1,2}$/.test(value)) {
+    const numeric = Number(value);
+    if (numeric === 0) return "E";
+    return numeric > 0 ? `+${numeric}` : String(numeric);
+  }
+  return "";
 }
 
 function loadAppState() {
@@ -455,6 +479,10 @@ function teamScoreForWeek(teamId, week) {
   return POINTS_BY_PLACE[placeIndex] * (isDoublePointsWeek(week) ? 2 : 1);
 }
 
+function teamGolfScoreForWeek(teamId, week) {
+  return normalizeGolfScore(week.scores?.[teamId]);
+}
+
 function teamPlaceForWeek(teamId, week) {
   const placeIndex = week.placements.indexOf(teamId);
   if (placeIndex === -1 || placeIndex >= state.teamCount) return null;
@@ -636,6 +664,7 @@ function renderPlacements() {
     const teamId = activeIds.has(placedTeamId) ? placedTeamId : null;
     if (teamId) {
       drop.append(createTeamChip(getTeam(teamId)));
+      drop.append(createScoreControl(week, teamId));
     } else {
       const empty = document.createElement("div");
       empty.className = "empty-slot";
@@ -650,6 +679,55 @@ function renderPlacements() {
     });
     els.placementGrid.append(card);
   });
+}
+
+function createScoreControl(week, teamId) {
+  const score = normalizeGolfScore(week.scores?.[teamId]);
+
+  if (!isAdminMode()) {
+    const badge = document.createElement("div");
+    badge.className = `score-badge ${score ? "" : "is-empty"}`;
+    badge.textContent = score || "TBD";
+    return badge;
+  }
+
+  const label = document.createElement("label");
+  label.className = "score-editor";
+  label.innerHTML = "<span>Score</span>";
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.inputMode = "text";
+  input.maxLength = 3;
+  input.placeholder = "-8";
+  input.value = score;
+  input.setAttribute("aria-label", `Score de ${getTeam(teamId)?.name || "equipo"}`);
+  input.addEventListener("click", (event) => event.stopPropagation());
+  input.addEventListener("input", () => {
+    input.value = input.value.toUpperCase().replace(/[^0-9+\-E]/g, "").slice(0, 3);
+  });
+  input.addEventListener("change", () => updateTeamGolfScore(week, teamId, input.value));
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      input.blur();
+    }
+  });
+
+  label.append(input);
+  return label;
+}
+
+function updateTeamGolfScore(week, teamId, rawScore) {
+  if (!requireAdmin()) return;
+  const score = normalizeGolfScore(rawScore);
+  week.scores = week.scores || {};
+  if (score) {
+    week.scores[teamId] = score;
+  } else {
+    delete week.scores[teamId];
+  }
+  renderReport();
+  saveState();
 }
 
 function createTeamChip(team) {
@@ -710,6 +788,10 @@ function moveTeam(teamId, zoneType, placeIndex) {
     }
   }
 
+  if (zoneType === "pool") {
+    delete week.scores?.[teamId];
+  }
+
   selectedTeamId = null;
   renderPool();
   renderPlacements();
@@ -759,7 +841,11 @@ function renderReport() {
   const body = sortedTeams
     .map((team) => {
       const weeklyCells = visibleReportWeeks
-        .map((week) => `<td>${teamScoreForWeek(team.id, week).toLocaleString()}</td>`)
+        .map((week) => {
+          const golfScore = teamGolfScoreForWeek(team.id, week);
+          const points = teamScoreForWeek(team.id, week).toLocaleString();
+          return `<td>${points}${golfScore ? `<span class="golf-score-inline">${golfScore}</span>` : ""}</td>`;
+        })
         .join("");
       return `<tr><td>${escapeHtml(team.name)}</td>${weeklyCells}<td>${team.total.toLocaleString()}</td></tr>`;
     })

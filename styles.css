@@ -565,6 +565,8 @@ select {
 }
 
 .place-drop {
+  display: grid;
+  gap: 8px;
   min-height: 40px;
 }
 
@@ -577,6 +579,56 @@ select {
   color: #6b5a4c;
   font-size: 0.84rem;
   font-weight: 800;
+}
+
+.score-editor {
+  display: grid;
+  grid-template-columns: auto minmax(58px, 80px);
+  align-items: center;
+  justify-content: start;
+  gap: 8px;
+  color: rgba(45, 45, 45, 0.7);
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.score-editor input {
+  min-height: 34px;
+  border: 1px solid rgba(0, 103, 71, 0.24);
+  border-radius: 8px;
+  padding: 0 10px;
+  background: #fffaf0;
+  color: #006747;
+  font-weight: 950;
+  text-align: center;
+}
+
+.score-badge {
+  justify-self: start;
+  border: 1px solid rgba(0, 103, 71, 0.22);
+  border-radius: 999px;
+  padding: 5px 12px;
+  background: rgba(0, 103, 71, 0.1);
+  color: #006747;
+  font-size: 0.86rem;
+  font-weight: 950;
+}
+
+.score-badge.is-empty {
+  color: rgba(45, 45, 45, 0.54);
+}
+
+.golf-score-inline {
+  display: inline-grid;
+  place-items: center;
+  min-width: 34px;
+  margin-left: 6px;
+  border-radius: 999px;
+  padding: 2px 7px;
+  background: rgba(0, 103, 71, 0.1);
+  color: #006747;
+  font-size: 0.72rem;
+  font-weight: 950;
 }
 
 .standings-list {
