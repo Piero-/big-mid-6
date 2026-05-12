@@ -99,6 +99,7 @@ function createCategoryState(overrides = {}) {
       paidTeamIds: [],
       placements: Array(MAX_TEAMS).fill(null),
       scores: {},
+      scoreTiebreaks: {},
     })),
     ...overrides,
   };
@@ -117,6 +118,7 @@ function normalizeCategoryState(saved = {}) {
         return typeof teamId === "string" ? teamId : null;
       }),
       scores: normalizeScores(savedWeek.scores),
+      scoreTiebreaks: normalizeScoreTiebreaks(savedWeek.scoreTiebreaks),
     };
   });
 
@@ -159,6 +161,16 @@ function normalizeScores(savedScores) {
     Object.entries(savedScores)
       .filter(([teamId, score]) => validIds.has(teamId) && normalizeGolfScore(score))
       .map(([teamId, score]) => [teamId, normalizeGolfScore(score)]),
+  );
+}
+
+function normalizeScoreTiebreaks(savedTiebreaks) {
+  if (!savedTiebreaks || typeof savedTiebreaks !== "object") return {};
+  const validIds = new Set(defaultTeams.map((team) => team.id));
+  return Object.fromEntries(
+    Object.entries(savedTiebreaks)
+      .filter(([teamId, rank]) => validIds.has(teamId) && Number.isInteger(Number(rank)) && Number(rank) > 0)
+      .map(([teamId, rank]) => [teamId, Number(rank)]),
   );
 }
 
@@ -635,9 +647,19 @@ function renderPool() {
   const placed = activePlacementsSet();
   const availableTeams = getActiveTeams().filter((team) => !placed.has(team.id));
   els.teamPool.innerHTML = "";
-  availableTeams.forEach((team) => els.teamPool.append(createTeamChip(team)));
+  availableTeams.forEach((team) => els.teamPool.append(createPoolTeamRow(team)));
   els.poolCount.textContent = `${availableTeams.length} disponibles`;
   els.teamPool.dataset.zoneType = "pool";
+}
+
+function createPoolTeamRow(team) {
+  const row = document.createElement("div");
+  row.className = "pool-team-row";
+  row.append(createTeamChip(team));
+  if (isAdminMode()) {
+    row.append(createPoolScoreControl(getWeek(), team.id));
+  }
+  return row;
 }
 
 function renderPlacements() {
@@ -695,6 +717,8 @@ function createScoreControl(week, teamId) {
     return badge;
   }
 
+  const stack = document.createElement("div");
+  stack.className = "score-control-stack";
   const label = document.createElement("label");
   label.className = "score-editor";
   label.innerHTML = "<span>Score</span>";
@@ -719,6 +743,57 @@ function createScoreControl(week, teamId) {
   });
 
   label.append(input);
+  stack.append(label);
+  const tiebreak = createTiebreakControl(week, teamId);
+  if (tiebreak) stack.append(tiebreak);
+  return stack;
+}
+
+function createPoolScoreControl(week, teamId) {
+  const label = document.createElement("label");
+  label.className = "pool-score-editor";
+  label.innerHTML = "<span>Score</span>";
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.inputMode = "text";
+  input.maxLength = 3;
+  input.placeholder = "-8";
+  input.value = normalizeGolfScore(week.scores?.[teamId]);
+  input.setAttribute("aria-label", `Score rápido de ${getTeam(teamId)?.name || "equipo"}`);
+  input.addEventListener("click", (event) => event.stopPropagation());
+  input.addEventListener("input", () => {
+    input.value = input.value.toUpperCase().replace(/[^0-9+\-E]/g, "").slice(0, 3);
+  });
+  input.addEventListener("change", () => updateTeamGolfScore(week, teamId, input.value));
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") input.blur();
+  });
+
+  label.append(input);
+  return label;
+}
+
+function createTiebreakControl(week, teamId) {
+  const score = normalizeGolfScore(week.scores?.[teamId]);
+  if (!score) return null;
+  const tiedTeamIds = tiedTeamIdsForScore(week, score);
+  if (tiedTeamIds.length < 2) return null;
+
+  const label = document.createElement("label");
+  label.className = "tiebreak-editor";
+  label.innerHTML = "<span>Desempate</span>";
+
+  const select = document.createElement("select");
+  select.setAttribute("aria-label", `Orden de desempate de ${getTeam(teamId)?.name || "equipo"}`);
+  select.innerHTML = [
+    '<option value="">Ordenar</option>',
+    ...tiedTeamIds.map((_, index) => `<option value="${index + 1}">${placeLabel(index + 1)}</option>`),
+  ].join("");
+  select.value = String(week.scoreTiebreaks?.[teamId] || "");
+  select.addEventListener("click", (event) => event.stopPropagation());
+  select.addEventListener("change", () => updateScoreTiebreak(week, teamId, select.value));
+  label.append(select);
   return label;
 }
 
@@ -726,16 +801,100 @@ function updateTeamGolfScore(week, teamId, rawScore, options = {}) {
   if (!requireAdmin()) return;
   const score = normalizeGolfScore(rawScore);
   week.scores = week.scores || {};
+  week.scoreTiebreaks = week.scoreTiebreaks || {};
   if (score) {
     week.scores[teamId] = score;
   } else {
     delete week.scores[teamId];
+    delete week.scoreTiebreaks[teamId];
   }
+  pruneScoreTiebreaks(week);
+  syncPlacementsFromScores(week);
+  renderPool();
   if (options.rerenderPlacements !== false) {
     renderPlacements();
   }
+  renderStandings();
   renderReport();
   saveState();
+}
+
+function updateScoreTiebreak(week, teamId, rawRank) {
+  if (!requireAdmin()) return;
+  week.scoreTiebreaks = week.scoreTiebreaks || {};
+  const rank = Number(rawRank);
+  if (Number.isInteger(rank) && rank > 0) {
+    const score = normalizeGolfScore(week.scores?.[teamId]);
+    tiedTeamIdsForScore(week, score)
+      .filter((tiedTeamId) => tiedTeamId !== teamId && week.scoreTiebreaks?.[tiedTeamId] === rank)
+      .forEach((tiedTeamId) => delete week.scoreTiebreaks[tiedTeamId]);
+    week.scoreTiebreaks[teamId] = rank;
+  } else {
+    delete week.scoreTiebreaks[teamId];
+  }
+  syncPlacementsFromScores(week);
+  renderPool();
+  renderPlacements();
+  renderStandings();
+  renderReport();
+  saveState();
+}
+
+function golfScoreSortValue(score) {
+  const normalized = normalizeGolfScore(score);
+  if (!normalized) return Number.POSITIVE_INFINITY;
+  return normalized === "E" ? 0 : Number(normalized);
+}
+
+function tiedTeamIdsForScore(week, score) {
+  const activeIds = getActiveTeamIds();
+  return Object.entries(week.scores || {})
+    .filter(([teamId, teamScore]) => activeIds.has(teamId) && normalizeGolfScore(teamScore) === score)
+    .map(([teamId]) => teamId);
+}
+
+function pruneScoreTiebreaks(week) {
+  week.scoreTiebreaks = week.scoreTiebreaks || {};
+  const activeScores = week.scores || {};
+  Object.keys(week.scoreTiebreaks).forEach((teamId) => {
+    const score = normalizeGolfScore(activeScores[teamId]);
+    if (!score || tiedTeamIdsForScore(week, score).length < 2) {
+      delete week.scoreTiebreaks[teamId];
+    }
+  });
+}
+
+function syncPlacementsFromScores(week) {
+  const activeTeams = getActiveTeams();
+  const activeIds = new Set(activeTeams.map((team) => team.id));
+  const previousOrder = new Map(
+    week.placements
+      .map((teamId, index) => [teamId, index])
+      .filter(([teamId]) => activeIds.has(teamId)),
+  );
+  const scoredTeamIds = activeTeams
+    .filter((team) => normalizeGolfScore(week.scores?.[team.id]))
+    .sort((a, b) => {
+      const scoreDelta = golfScoreSortValue(week.scores[a.id]) - golfScoreSortValue(week.scores[b.id]);
+      if (scoreDelta) return scoreDelta;
+      const tieDelta = (week.scoreTiebreaks?.[a.id] || Number.POSITIVE_INFINITY)
+        - (week.scoreTiebreaks?.[b.id] || Number.POSITIVE_INFINITY);
+      if (tieDelta) return tieDelta;
+      const previousDelta = (previousOrder.get(a.id) ?? Number.POSITIVE_INFINITY)
+        - (previousOrder.get(b.id) ?? Number.POSITIVE_INFINITY);
+      if (previousDelta) return previousDelta;
+      return a.name.localeCompare(b.name);
+    })
+    .map((team) => team.id);
+
+  const scoredSet = new Set(scoredTeamIds);
+  const manualUnscoredIds = week.placements.filter(
+    (teamId) => activeIds.has(teamId) && !scoredSet.has(teamId),
+  );
+  const nextPlacements = [...scoredTeamIds, ...manualUnscoredIds]
+    .filter((teamId, index, list) => list.indexOf(teamId) === index)
+    .slice(0, MAX_TEAMS);
+  week.placements = Array.from({ length: MAX_TEAMS }, (_, index) => nextPlacements[index] || null);
 }
 
 function createTeamChip(team) {
@@ -798,6 +957,8 @@ function moveTeam(teamId, zoneType, placeIndex) {
 
   if (zoneType === "pool") {
     delete week.scores?.[teamId];
+    delete week.scoreTiebreaks?.[teamId];
+    pruneScoreTiebreaks(week);
   }
 
   selectedTeamId = null;
@@ -1583,6 +1744,8 @@ els.doubleToggle.addEventListener("change", () => {
 els.clearWeekButton.addEventListener("click", () => {
   if (!requireAdmin()) return;
   getWeek().placements = Array(MAX_TEAMS).fill(null);
+  getWeek().scores = {};
+  getWeek().scoreTiebreaks = {};
   renderPool();
   renderPlacements();
   renderStandings();

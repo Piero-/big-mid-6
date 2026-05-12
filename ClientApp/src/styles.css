@@ -446,6 +446,23 @@ select {
   background: rgba(0, 103, 71, 0.1);
 }
 
+.pool-team-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 92px;
+  align-items: end;
+  gap: 8px;
+  width: 100%;
+  border: 1px solid rgba(0, 103, 71, 0.12);
+  border-radius: 8px;
+  padding: 8px;
+  background: rgba(255, 250, 240, 0.78);
+}
+
+.pool-team-row .team-chip {
+  width: 100%;
+  justify-content: flex-start;
+}
+
 .team-chip {
   display: inline-flex;
   align-items: center;
@@ -601,6 +618,40 @@ select {
   color: #006747;
   font-weight: 950;
   text-align: center;
+}
+
+.score-control-stack {
+  display: grid;
+  gap: 8px;
+}
+
+.pool-score-editor,
+.tiebreak-editor {
+  display: grid;
+  gap: 5px;
+  color: rgba(45, 45, 45, 0.7);
+  font-size: 0.68rem;
+  font-weight: 950;
+}
+
+.pool-score-editor input,
+.tiebreak-editor select {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid rgba(0, 103, 71, 0.24);
+  border-radius: 8px;
+  padding: 0 10px;
+  background: #fffaf0;
+  color: #006747;
+  font-weight: 950;
+}
+
+.pool-score-editor input {
+  text-align: center;
+}
+
+.tiebreak-editor select {
+  cursor: pointer;
 }
 
 .score-badge {
@@ -1862,6 +1913,10 @@ body {
   .current-week-score {
     gap: 6px;
     flex-wrap: wrap;
+  }
+
+  .pool-team-row {
+    grid-template-columns: 1fr;
   }
 
   table {
