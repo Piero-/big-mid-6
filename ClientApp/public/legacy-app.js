@@ -1196,6 +1196,7 @@ function getReportTeams(activeReportWeek, mode) {
       total: teamTotal(team.id),
       weekPoints: teamScoreForWeek(team.id, activeReportWeek),
       weekPlace: teamPlaceForWeek(team.id, activeReportWeek),
+      weekGolfScore: teamGolfScoreForWeek(team.id, activeReportWeek),
       weekMoney: teamMoneyForWeek(team.id, activeReportWeek),
       totalMoney: teamMoneyTotal(team.id),
     }))
@@ -1227,8 +1228,20 @@ async function downloadReportImage(mode = "week") {
   const scale = 2;
   const size = 1600;
   const width = size;
-  const height = size;
   const outerPadding = 72;
+  const podiumTop = 236;
+  const podiumBottom = podiumTop + 570;
+  const otherTeams = sortedTeams.slice(3);
+  const otherGap = 12;
+  const otherWidth = width - outerPadding * 2;
+  const otherRows = otherTeams.length;
+  const otherHeight = 70;
+  const otherStartY = podiumBottom + (otherRows ? 80 : 42);
+  const footerGap = 86;
+  const contentBottom = otherRows
+    ? otherStartY + otherRows * otherHeight + Math.max(0, otherRows - 1) * otherGap
+    : podiumBottom;
+  const height = Math.max(size, contentBottom + footerGap);
 
   const canvas = document.createElement("canvas");
   canvas.width = width * scale;
@@ -1269,23 +1282,17 @@ async function downloadReportImage(mode = "week") {
   const first = sortedTeams[0];
   const second = sortedTeams[1];
   const third = sortedTeams[2];
-  const podiumTop = 236;
   if (first) drawPodiumCard(ctx, 250, podiumTop, 1100, 276, first, 1, "gold", mode);
   if (second) drawPodiumCard(ctx, 128, podiumTop + 322, 644, 248, second, 2, "silver", mode);
   if (third) drawPodiumCard(ctx, 828, podiumTop + 322, 644, 248, third, 3, "bronze", mode);
 
-  const otherTeams = sortedTeams.slice(3);
-  const otherStartY = 852;
-  const otherGap = 12;
-  const otherWidth = width - outerPadding * 2;
-  const otherRows = Math.max(1, otherTeams.length);
-  const otherHeight = Math.min(70, (height - otherStartY - 104 - otherGap * (otherRows - 1)) / otherRows);
-
-  drawReportRowHeader(ctx, outerPadding, otherStartY - 34, otherWidth, mode);
-  otherTeams.forEach((team, index) => {
-    const y = otherStartY + index * (otherHeight + otherGap);
-    drawCompactReportRow(ctx, outerPadding, y, otherWidth, otherHeight, team, index + 4, mode);
-  });
+  if (otherRows) {
+    drawReportRowHeader(ctx, outerPadding, otherStartY - 34, otherWidth, mode);
+    otherTeams.forEach((team, index) => {
+      const y = otherStartY + index * (otherHeight + otherGap);
+      drawCompactReportRow(ctx, outerPadding, y, otherWidth, otherHeight, team, index + 4, mode);
+    });
+  }
 
   ctx.fillStyle = "rgba(243, 235, 212, 0.82)";
   ctx.font = "800 15px Inter, Arial, sans-serif";
@@ -1346,7 +1353,11 @@ function drawPodiumCard(ctx, x, y, width, height, team, reportPlace, tone, mode)
   ctx.textBaseline = "alphabetic";
   ctx.fillStyle = "#2d2d2d";
   ctx.font = reportPlace === 1 ? "900 52px Inter, Arial, sans-serif" : "900 40px Inter, Arial, sans-serif";
-  ctx.fillText(truncateText(ctx, team.name, width - (contentX - x) - cardInset), contentX, y + (reportPlace === 1 ? 74 : 72));
+  ctx.fillText(
+    truncateText(ctx, reportTeamLabel(team), width - (contentX - x) - cardInset),
+    contentX,
+    y + (reportPlace === 1 ? 74 : 72),
+  );
   ctx.fillStyle = palette[2];
   ctx.font = "900 21px Inter, Arial, sans-serif";
   const subtitle =
@@ -1417,7 +1428,7 @@ function drawCompactReportRow(ctx, x, y, width, height, team, reportPlace, mode)
   ctx.textBaseline = "middle";
   ctx.fillStyle = "#2d2d2d";
   ctx.font = "900 24px Inter, Arial, sans-serif";
-  ctx.fillText(truncateText(ctx, team.name, columns.name.width), x + columns.name.x, centerY);
+  ctx.fillText(truncateText(ctx, reportTeamLabel(team), columns.name.width), x + columns.name.x, centerY);
 
   ctx.font = "900 22px Inter, Arial, sans-serif";
   if (mode === "overall") {
@@ -1459,6 +1470,10 @@ function reportRowColumns(width, mode) {
     weekMoney: { x: width * 0.68, width: width * 0.15 },
     totalMoney: { x: width * 0.84, width: width * 0.15 },
   };
+}
+
+function reportTeamLabel(team) {
+  return team.weekGolfScore ? `${team.name} · ${team.weekGolfScore}` : team.name;
 }
 
 function drawMetricGrid(ctx, x, y, width, height, metrics, isPodium) {
