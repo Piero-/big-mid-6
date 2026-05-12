@@ -6,6 +6,14 @@
     {
       "source": "/api/(.*)",
       "destination": "https://tour-virtual-banreservas-api.onrender.com/api/$1"
+    },
+    {
+      "source": "/tour-a",
+      "destination": "/"
+    },
+    {
+      "source": "/tour-b",
+      "destination": "/"
     }
   ]
 }

@@ -9,7 +9,11 @@ const REGULAR_WEEK_FEE_DOP = 6000;
 const DEFAULT_FINAL_WEEK_FEE_DOP = 9000;
 const STORAGE_KEY = "team-results-tracker:v1";
 const MEDAL_TONES = ["gold", "silver", "bronze"];
-const LOGO_SRC = "assets/pnglogo.png";
+const LOGO_SRC = "/assets/pnglogo.png";
+const CATEGORY_ROUTES = {
+  A: "/tour-a",
+  B: "/tour-b",
+};
 const PAYMENT_DEFAULTS_VERSION = 2;
 const API_STATE_URL = window.TOUR_API_STATE_URL || "/api/state";
 const API_PRESENCE_URL = window.TOUR_API_PRESENCE_URL || API_STATE_URL.replace(/\/state$/, "/presence");
@@ -199,9 +203,10 @@ function loadAppState() {
 }
 
 function normalizeAppStatePayload(saved) {
+  const routeCategory = categoryFromPath();
   if (!saved) {
     return {
-      activeCategory: "A",
+      activeCategory: routeCategory || "A",
       categories: {
         A: createCategoryState(),
         B: createCategoryState(),
@@ -210,7 +215,7 @@ function normalizeAppStatePayload(saved) {
   }
 
   if (saved.categories) {
-    const activeCategory = saved.activeCategory === "B" ? "B" : "A";
+    const activeCategory = routeCategory || (saved.activeCategory === "B" ? "B" : "A");
     return {
       activeCategory,
       categories: {
@@ -221,12 +226,26 @@ function normalizeAppStatePayload(saved) {
   }
 
   return {
-    activeCategory: "A",
+    activeCategory: routeCategory || "A",
     categories: {
       A: normalizeCategoryState(saved),
       B: createCategoryState(),
     },
   };
+}
+
+function categoryFromPath(pathname = window.location.pathname) {
+  const normalizedPath = String(pathname || "").replace(/\/+$/, "") || "/";
+  if (normalizedPath === CATEGORY_ROUTES.A) return "A";
+  if (normalizedPath === CATEGORY_ROUTES.B) return "B";
+  return null;
+}
+
+function syncCategoryRoute(category, { replace = false } = {}) {
+  const nextPath = CATEGORY_ROUTES[category];
+  if (!nextPath || window.location.pathname === nextPath) return;
+  const nextUrl = `${nextPath}${window.location.search}${window.location.hash}`;
+  window.history[replace ? "replaceState" : "pushState"]({ category }, "", nextUrl);
 }
 
 function saveState() {
@@ -583,7 +602,7 @@ function render() {
   saveState();
 }
 
-function switchCategory(category) {
+function switchCategory(category, { updateRoute = true } = {}) {
   if (!["A", "B"].includes(category) || category === appState.activeCategory) return;
   saveState();
   appState.activeCategory = category;
@@ -591,6 +610,7 @@ function switchCategory(category) {
   activeWeek = state.activeWeek || 1;
   selectedTeamId = null;
   els.reportExport.hidden = true;
+  if (updateRoute) syncCategoryRoute(category);
   render();
 }
 
@@ -1149,6 +1169,7 @@ function importDataFile(event) {
       activeWeek = state.activeWeek || 1;
       selectedTeamId = null;
       els.reportExport.hidden = true;
+      syncCategoryRoute(appState.activeCategory, { replace: true });
       render();
     } catch {
       alert("No se pudo cargar el archivo. Revisa que sea un JSON exportado desde esta aplicación.");
@@ -1684,6 +1705,12 @@ function closeActionMenus(exceptMenu = null) {
 }
 
 els.categorySelect.addEventListener("change", () => switchCategory(els.categorySelect.value));
+window.addEventListener("popstate", () => {
+  const routeCategory = categoryFromPath();
+  if (routeCategory && routeCategory !== appState.activeCategory) {
+    switchCategory(routeCategory, { updateRoute: false });
+  }
+});
 
 els.weekLimitInput.addEventListener("input", handleWeekLimitChange);
 els.weekLimitInput.addEventListener("change", handleWeekLimitChange);
