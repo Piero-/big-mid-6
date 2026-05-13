@@ -737,6 +737,23 @@ function EventoSalidasAdmin({ detail, onBack, onSave, savingTeams, slug }) {
   const assignedTeams = teams.filter(isTeamAssignedForStartingEvent);
   const allAssigned = teams.length >= 22 && assignedTeams.length >= 22;
   const logo = slug === "mid-6" ? "/assets/mid6-amarillo.png" : "/assets/big6-amarillo.png";
+  const [activeIndex, setActiveIndex] = useState(0);
+  const activeTeam = teams[activeIndex] || teams[0];
+  const previewTeams = teams.slice(activeIndex + 1, activeIndex + 4);
+
+  useEffect(() => {
+    if (activeIndex > Math.max(0, teams.length - 1)) {
+      setActiveIndex(Math.max(0, teams.length - 1));
+    }
+  }, [activeIndex, teams.length]);
+
+  function goToNext() {
+    setActiveIndex((current) => Math.min(teams.length - 1, current + 1));
+  }
+
+  function goToPrevious() {
+    setActiveIndex((current) => Math.max(0, current - 1));
+  }
 
   return (
     <section className="starting-event-view">
@@ -758,25 +775,45 @@ function EventoSalidasAdmin({ detail, onBack, onSave, savingTeams, slug }) {
           ))}
         </div>
       ) : (
-        <div className="starting-card-grid">
-          {teams.map((team, index) => (
+        <div className="starting-carousel">
+          <div className="starting-carousel-stage">
+            {previewTeams.map((team, previewIndex) => (
+              <StartingTeamPreviewCard
+                index={activeIndex + previewIndex + 1}
+                key={team.id}
+                logo={logo}
+                offset={previewIndex + 1}
+                team={team}
+                tournamentName={detail?.name}
+              />
+            ))}
+            {activeTeam && (
             <StartingTeamAssignCard
-              index={index}
-              key={team.id}
+              index={activeIndex}
+              key={activeTeam.id}
               logo={logo}
+              onNext={goToNext}
+              onPrevious={goToPrevious}
               onSave={onSave}
-              saving={savingTeams.has(team.id)}
-              team={team}
+              saving={savingTeams.has(activeTeam.id)}
+              team={activeTeam}
+              total={teams.length}
               tournamentName={detail?.name}
             />
-          ))}
+            )}
+          </div>
+          <div className="starting-carousel-actions">
+            <button className="button subtle" type="button" onClick={goToPrevious} disabled={activeIndex === 0}>Anterior</button>
+            <span>{Math.min(activeIndex + 1, teams.length)} / {teams.length}</span>
+            <button className="button primary" type="button" onClick={goToNext} disabled={activeIndex >= teams.length - 1}>Siguiente</button>
+          </div>
         </div>
       )}
     </section>
   );
 }
 
-function StartingTeamAssignCard({ index, logo, onSave, saving, team, tournamentName }) {
+function StartingTeamAssignCard({ index, logo, onNext, onPrevious, onSave, saving, team, total, tournamentName }) {
   const [draft, setDraft] = useState(() => teamToDraft(team));
 
   useEffect(() => {
@@ -790,12 +827,12 @@ function StartingTeamAssignCard({ index, logo, onSave, saving, team, tournamentN
   }
 
   return (
-    <article className="starting-assign-card">
+    <article className="starting-assign-card active">
       <div className="starting-card-title">
         <img src={logo} alt="" />
         <div>
           <p>{tournamentName || "Torneo"}</p>
-          <span>Equipo {index + 1}</span>
+          <span>Equipo {index + 1} de {total}</span>
         </div>
       </div>
       <div className="starting-card-main">
@@ -825,10 +862,44 @@ function StartingTeamAssignCard({ index, logo, onSave, saving, team, tournamentN
         ))}
       </div>
       <div className="starting-card-footer">
-        <Field label="El juez (opcional)" value={draft.judgeName} onChange={(value) => setDraft({ ...draft, judgeName: value })} />
+        <button className="button subtle" type="button" onClick={onPrevious} disabled={index === 0}>Anterior</button>
         <button className="button primary" type="button" onClick={() => onSave(draft)} disabled={saving}>
           {saving ? "Guardando..." : "Guardar asignacion"}
         </button>
+        <button className="button subtle" type="button" onClick={onNext} disabled={index >= total - 1}>Siguiente</button>
+      </div>
+    </article>
+  );
+}
+
+function StartingTeamPreviewCard({ index, logo, offset, team, tournamentName }) {
+  const participants = normalizeTeamParticipants(team.participants);
+  return (
+    <article className={`starting-assign-card preview preview-${offset}`}>
+      <div className="starting-card-title">
+        <img src={logo} alt="" />
+        <div>
+          <p>{tournamentName || "Torneo"}</p>
+          <span>Equipo {index + 1}</span>
+        </div>
+      </div>
+      <div className="starting-card-main">
+        <div className="starting-readonly-box">
+          <span>Nombre del equipo</span>
+          <strong>{team.name || "Team name"}</strong>
+        </div>
+        <div className="starting-readonly-box">
+          <span>Hoyo de salida</span>
+          <strong>{team.startingHole || "-"}</strong>
+        </div>
+      </div>
+      <div className="starting-participants-box readonly">
+        {participants.map((value, participantIndex) => (
+          <div className="starting-readonly-box" key={participantIndex}>
+            <span>Jugador {participantIndex + 1}</span>
+            <strong>{value || `Participante ${participantIndex + 1}`}</strong>
+          </div>
+        ))}
       </div>
     </article>
   );
@@ -841,7 +912,7 @@ function StartingTeamCompactCard({ team, tournamentName }) {
       <div>
         <p>{tournamentName || "Torneo"}</p>
         <strong>{team.name}</strong>
-        <span>{participants.filter(Boolean).join(" · ")}</span>
+        <span>{participants.filter(Boolean).join(" - ")}</span>
       </div>
       <b>Hoyo {team.startingHole}</b>
     </article>
