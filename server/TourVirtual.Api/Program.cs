@@ -72,6 +72,8 @@ app.UseCors();
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
+app.MapGet("/healthz", () => Results.Ok(new { status = "ok" }));
+
 app.MapPost("/api/auth/login", async (LoginRequest request, AppDbContext db) =>
 {
     var user = await db.Users
