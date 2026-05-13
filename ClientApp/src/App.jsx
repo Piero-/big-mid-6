@@ -842,12 +842,13 @@ function StartingTeamAssignCard({ index, logo, onNext, onPrevious, onSave, savin
         </div>
       </div>
       <div className="starting-card-main">
-        <Field
-          label="Nombre del equipo"
-          placeholder="Team name"
-          value={draft.name}
-          onChange={(value) => setDraft({ ...draft, name: value })}
-        />
+        <label className="starting-team-name-field">
+          <input
+            placeholder="Team name"
+            value={draft.name}
+            onChange={(event) => setDraft({ ...draft, name: event.target.value })}
+          />
+        </label>
         <Field
           label="Hoyo de salida"
           placeholder="Hoyo de salida"
@@ -890,8 +891,7 @@ function StartingTeamPreviewCard({ index, logo, offset, team, tournamentName }) 
         </div>
       </div>
       <div className="starting-card-main">
-        <div className="starting-readonly-box">
-          <span>Nombre del equipo</span>
+        <div className="starting-readonly-box team-name-preview">
           <strong>{team.name || "Team name"}</strong>
         </div>
         <div className="starting-readonly-box">

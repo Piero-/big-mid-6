@@ -463,6 +463,7 @@ a { color: inherit; text-decoration: none; }
 }
 
 .starting-card-main .field,
+.starting-team-name-field,
 .starting-participants-box,
 .starting-card-footer .field {
   padding: 14px;
@@ -473,6 +474,28 @@ a { color: inherit; text-decoration: none; }
 
 .starting-card-main .field {
   justify-content: center;
+}
+
+.starting-team-name-field {
+  display: grid;
+  align-content: center;
+  min-height: 118px;
+}
+
+.starting-team-name-field input {
+  width: 100%;
+  min-height: 82px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: clamp(2rem, 5vw, 4rem);
+  font-weight: 950;
+  line-height: 1;
+  outline: none;
+}
+
+.starting-team-name-field input::placeholder {
+  color: rgba(248, 250, 252, 0.42);
 }
 
 .starting-participants-box {
@@ -510,6 +533,16 @@ a { color: inherit; text-decoration: none; }
   font-size: 1rem;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.starting-readonly-box.team-name-preview {
+  align-content: center;
+  min-height: 118px;
+}
+
+.starting-readonly-box.team-name-preview strong {
+  font-size: clamp(1.6rem, 4vw, 3rem);
+  font-weight: 950;
 }
 
 .starting-card-footer {
