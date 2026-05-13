@@ -820,10 +820,10 @@ function EventoSalidasAdmin({ detail, onBack, onSave, savingTeams, slug }) {
 }
 
 function StartingTeamAssignCard({ index, logo, onNext, onPrevious, onSave, saving, team, total, tournamentName }) {
-  const [draft, setDraft] = useState(() => teamToDraft(team));
+  const [draft, setDraft] = useState(() => teamToStartingEventDraft(team));
 
   useEffect(() => {
-    setDraft(teamToDraft(team));
+    setDraft(teamToStartingEventDraft(team));
   }, [team]);
 
   function updateParticipant(participantIndex, value) {
@@ -854,7 +854,7 @@ function StartingTeamAssignCard({ index, logo, onNext, onPrevious, onSave, savin
           placeholder="Hoyo de salida"
           type="number"
           value={draft.startingHole}
-          onChange={(value) => setDraft({ ...draft, startingHole: Number(value) })}
+          onChange={(value) => setDraft({ ...draft, startingHole: value })}
         />
       </div>
       <div className="starting-participants-box">
@@ -880,7 +880,7 @@ function StartingTeamAssignCard({ index, logo, onNext, onPrevious, onSave, savin
 }
 
 function StartingTeamPreviewCard({ index, logo, offset, team, tournamentName }) {
-  const participants = normalizeTeamParticipants(team.participants);
+  const draft = teamToStartingEventDraft(team);
   return (
     <article className={`starting-assign-card preview preview-${offset}`}>
       <div className="starting-card-title">
@@ -896,14 +896,14 @@ function StartingTeamPreviewCard({ index, logo, offset, team, tournamentName }) 
         </div>
         <div className="starting-readonly-box">
           <span>Hoyo de salida</span>
-          <strong>{team.startingHole || "-"}</strong>
+          <strong>{draft.startingHole || ""}</strong>
         </div>
       </div>
       <div className="starting-participants-box readonly">
-        {participants.map((value, participantIndex) => (
+        {draft.participants.map((value, participantIndex) => (
           <div className="starting-readonly-box" key={participantIndex}>
             <span>Jugador {participantIndex + 1}</span>
-            <strong>{value || `Participante ${participantIndex + 1}`}</strong>
+            <strong>{value || ""}</strong>
           </div>
         ))}
       </div>
@@ -1575,6 +1575,21 @@ function teamToDraft(team) {
     name: team.name || "",
     startingHole: team.startingHole || 1,
     participants: normalizeTeamParticipants(team.participants || []),
+    judgeName: team.judgeName || "",
+  };
+}
+
+function teamToStartingEventDraft(team) {
+  const participants = normalizeTeamParticipants(team.participants || []).map((name, index) => {
+    const value = name || "";
+    return value.trim().toLowerCase() === `jugador ${index + 1}` ? "" : value;
+  });
+  const isDefaultSlot = /^(BIG|MID) Equipo \d+$/i.test((team.name || "").trim()) && participants.every((name) => !name.trim());
+  return {
+    id: team.id,
+    name: team.name || "",
+    startingHole: isDefaultSlot ? "" : (team.startingHole || ""),
+    participants,
     judgeName: team.judgeName || "",
   };
 }
