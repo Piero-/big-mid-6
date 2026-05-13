@@ -741,6 +741,7 @@ function EventoSalidasAdmin({ detail, onBack, onSave, savingTeams, slug }) {
   const allAssigned = teams.length >= 22 && assignedTeams.length >= 22;
   const logo = slug === "mid-6" ? "/assets/mid6-amarillo.png" : "/assets/big6-amarillo.png";
   const [activeIndex, setActiveIndex] = useState(0);
+  const [carouselDirection, setCarouselDirection] = useState("next");
   const activeTeam = teams[activeIndex] || teams[0];
   const previewTeams = teams.slice(activeIndex + 1, activeIndex + 4);
 
@@ -751,10 +752,12 @@ function EventoSalidasAdmin({ detail, onBack, onSave, savingTeams, slug }) {
   }, [activeIndex, teams.length]);
 
   function goToNext() {
+    setCarouselDirection("next");
     setActiveIndex((current) => Math.min(teams.length - 1, current + 1));
   }
 
   function goToPrevious() {
+    setCarouselDirection("previous");
     setActiveIndex((current) => Math.max(0, current - 1));
   }
 
@@ -778,7 +781,7 @@ function EventoSalidasAdmin({ detail, onBack, onSave, savingTeams, slug }) {
           ))}
         </div>
       ) : (
-        <div className="starting-carousel">
+        <div className={`starting-carousel ${carouselDirection === "previous" ? "from-left" : "from-right"}`}>
           <div className="starting-carousel-stage">
             {previewTeams.map((team, previewIndex) => (
               <StartingTeamPreviewCard

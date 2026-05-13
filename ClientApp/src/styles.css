@@ -268,8 +268,10 @@ a { color: inherit; text-decoration: none; }
 
 .starting-event-view {
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 18px;
   margin-top: 16px;
+  min-height: 100svh;
 }
 
 .starting-event-header {
@@ -305,8 +307,11 @@ a { color: inherit; text-decoration: none; }
 
 .starting-carousel {
   display: grid;
+  align-content: center;
   gap: 16px;
   justify-items: center;
+  min-height: 0;
+  padding: clamp(12px, 4vh, 42px) 0;
 }
 
 .starting-carousel-stage {
@@ -314,6 +319,7 @@ a { color: inherit; text-decoration: none; }
   width: min(100%, 760px);
   min-height: 540px;
   isolation: isolate;
+  perspective: 1200px;
 }
 
 .starting-assign-card {
@@ -335,6 +341,11 @@ a { color: inherit; text-decoration: none; }
   position: relative;
   z-index: 5;
   margin: 0 auto;
+  animation: startingSlideFromRight 360ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.starting-carousel.from-left .starting-assign-card.active {
+  animation-name: startingSlideFromLeft;
 }
 
 .starting-assign-card.preview {
@@ -354,19 +365,62 @@ a { color: inherit; text-decoration: none; }
 .starting-assign-card.preview-1 {
   z-index: 4;
   opacity: 0.62;
-  transform: translate(-50%, 42px) scale(0.92);
+  transform: translate(calc(-50% + 86px), 42px) scale(0.92);
+  animation: startingPreviewDrift 360ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .starting-assign-card.preview-2 {
   z-index: 3;
   opacity: 0.4;
-  transform: translate(-50%, 82px) scale(0.84);
+  transform: translate(calc(-50% + 150px), 82px) scale(0.84);
+  animation: startingPreviewDrift 360ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .starting-assign-card.preview-3 {
   z-index: 2;
   opacity: 0.24;
-  transform: translate(-50%, 120px) scale(0.76);
+  transform: translate(calc(-50% + 206px), 120px) scale(0.76);
+  animation: startingPreviewDrift 360ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.starting-carousel.from-left .starting-assign-card.preview-1 {
+  transform: translate(calc(-50% - 86px), 42px) scale(0.92);
+}
+
+.starting-carousel.from-left .starting-assign-card.preview-2 {
+  transform: translate(calc(-50% - 150px), 82px) scale(0.84);
+}
+
+.starting-carousel.from-left .starting-assign-card.preview-3 {
+  transform: translate(calc(-50% - 206px), 120px) scale(0.76);
+}
+
+@keyframes startingSlideFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(86px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes startingSlideFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-86px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes startingPreviewDrift {
+  from {
+    opacity: 0;
+  }
 }
 
 .starting-carousel-actions {
