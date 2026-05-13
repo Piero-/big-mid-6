@@ -66,6 +66,7 @@ using (var scope = app.Services.CreateScope())
     await EnsureRuntimeSchema(db);
     await SeedDatabase(db);
     await EnsureAdminPassword(db);
+    await EnsureDefaultTeamSlots(db, pgaPasswordPool);
 }
 
 app.UseCors();
@@ -667,8 +668,8 @@ static async Task SeedDatabase(AppDbContext db)
     db.Tournaments.AddRange(big6, mid6);
     await db.SaveChangesAsync();
 
-    var bigTeams = CreateTeams(big6.Id, "BIG", [1, 4, 7, 10]);
-    var midTeams = CreateTeams(mid6.Id, "MID", [2, 5, 8, 11]);
+    var bigTeams = CreateTeams(big6.Id, "BIG", 22);
+    var midTeams = CreateTeams(mid6.Id, "MID", 22);
     db.Teams.AddRange(bigTeams);
     db.Teams.AddRange(midTeams);
     await db.SaveChangesAsync();
@@ -723,6 +724,49 @@ static async Task EnsureAdminPassword(AppDbContext db)
         admin.PasswordSalt = salt;
         admin.PasswordHash = hash;
         admin.UpdatedAt = DateTimeOffset.UtcNow;
+    }
+
+    await db.SaveChangesAsync();
+}
+
+static async Task EnsureDefaultTeamSlots(AppDbContext db, IReadOnlyList<string> pgaPasswordPool)
+{
+    var tournaments = await db.Tournaments
+        .Include(item => item.Teams)
+            .ThenInclude(item => item.Users)
+        .ToListAsync();
+
+    foreach (var tournament in tournaments)
+    {
+        var teams = tournament.Teams.OrderBy(item => item.Id).ToList();
+        while (teams.Count < 22)
+        {
+            var number = teams.Count + 1;
+            var prefix = tournament.Slug.StartsWith("mid", StringComparison.OrdinalIgnoreCase) ? "MID" : "BIG";
+            var team = new Team
+            {
+                TournamentId = tournament.Id,
+                Name = $"{prefix} Equipo {number}",
+                StartingHole = ((number - 1) % 18) + 1,
+                Participants = string.Empty,
+                UpdatedAt = DateTimeOffset.UtcNow
+            };
+            db.Teams.Add(team);
+            await db.SaveChangesAsync();
+
+            var username = await BuildUniqueUsername(db, team.Name);
+            var password = GenerateTeamPassword(team, teams.Append(team), pgaPasswordPool);
+            var (salt, hash) = HashPassword(password);
+            db.Users.Add(new AppUser
+            {
+                Username = username,
+                Role = "Team",
+                TeamId = team.Id,
+                PasswordSalt = salt,
+                PasswordHash = hash
+            });
+            teams.Add(team);
+        }
     }
 
     await db.SaveChangesAsync();
@@ -787,12 +831,12 @@ static Tournament CreateTournament(string slug, string name, string theme, DateT
     };
 }
 
-static List<Team> CreateTeams(int tournamentId, string prefix, int[] startingHoles) =>
-    startingHoles.Select((hole, index) => new Team
+static List<Team> CreateTeams(int tournamentId, string prefix, int count) =>
+    Enumerable.Range(1, count).Select(number => new Team
     {
         TournamentId = tournamentId,
-        Name = $"{prefix} Equipo {index + 1}",
-        StartingHole = hole,
+        Name = $"{prefix} Equipo {number}",
+        StartingHole = ((number - 1) % 18) + 1,
         Participants = string.Join(" | ", Enumerable.Range(1, 6).Select(item => $"Jugador {item}"))
     }).ToList();
 

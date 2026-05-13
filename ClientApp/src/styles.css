@@ -205,6 +205,15 @@ a { color: inherit; text-decoration: none; }
 .dashboard-grid.leaderboard-only { grid-template-columns: 1fr; }
 .scoring-grid { grid-template-columns: minmax(0, 1.1fr) minmax(360px, 0.9fr); }
 .admin-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.admin-grid {
+  align-items: start;
+}
+.admin-grid .panel {
+  align-self: start;
+}
+.teams-panel {
+  grid-row: span 3;
+}
 
 .panel {
   min-width: 0;

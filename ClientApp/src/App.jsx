@@ -658,7 +658,7 @@ function AdminApp() {
             </form>
           )}
         </Panel>
-        <Panel title="Podio" kicker="Ganadores oficiales">
+        <Panel title="Podio" kicker="Ganadores oficiales" className="podium-panel">
           <form className="stack" onSubmit={savePodium}>
             <div className="podium-admin-grid">
               <PodiumAdminPlace
@@ -692,7 +692,7 @@ function AdminApp() {
             </div>
           </form>
         </Panel>
-        <Panel title="Equipos" kicker={`${detail?.teams?.length || 0} de 22 espacios`}>
+        <Panel title="Equipos" kicker={`${detail?.teams?.length || 0} de 22 espacios`} className="teams-panel">
           <div className="team-count-control">
             <button className="button subtle" type="button" onClick={() => updateTeamCount((detail?.teams?.length || 0) - 1)} disabled={(detail?.teams?.length || 0) <= 0}>-</button>
             <strong>{detail?.teams?.length || 0}</strong>
