@@ -743,7 +743,8 @@ function EventoSalidasAdmin({ detail, onBack, onSave, savingTeams, slug }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [carouselDirection, setCarouselDirection] = useState("next");
   const activeTeam = teams[activeIndex] || teams[0];
-  const previewTeams = teams.slice(activeIndex + 1, activeIndex + 4);
+  const previousTeam = activeIndex > 0 ? teams[activeIndex - 1] : null;
+  const nextTeam = activeIndex < teams.length - 1 ? teams[activeIndex + 1] : null;
 
   useEffect(() => {
     if (activeIndex > Math.max(0, teams.length - 1)) {
@@ -783,20 +784,29 @@ function EventoSalidasAdmin({ detail, onBack, onSave, savingTeams, slug }) {
       ) : (
         <div className={`starting-carousel ${carouselDirection === "previous" ? "from-left" : "from-right"}`}>
           <div className="starting-carousel-stage">
-            {previewTeams.map((team, previewIndex) => (
+            {previousTeam && (
               <StartingTeamPreviewCard
-                index={activeIndex + previewIndex + 1}
-                key={team.id}
+                index={activeIndex - 1}
+                key={previousTeam.id}
                 logo={logo}
-                offset={previewIndex + 1}
-                team={team}
+                side="left"
+                team={previousTeam}
                 tournamentName={detail?.name}
               />
-            ))}
+            )}
+            {nextTeam && (
+              <StartingTeamPreviewCard
+                index={activeIndex + 1}
+                key={nextTeam.id}
+                logo={logo}
+                side="right"
+                team={nextTeam}
+                tournamentName={detail?.name}
+              />
+            )}
             {activeTeam && (
             <StartingTeamAssignCard
               index={activeIndex}
-              key={activeTeam.id}
               logo={logo}
               onNext={goToNext}
               onPrevious={goToPrevious}
@@ -879,10 +889,10 @@ function StartingTeamAssignCard({ index, logo, onNext, onPrevious, onSave, savin
   );
 }
 
-function StartingTeamPreviewCard({ index, logo, offset, team, tournamentName }) {
+function StartingTeamPreviewCard({ index, logo, side, team, tournamentName }) {
   const draft = teamToStartingEventDraft(team);
   return (
-    <article className={`starting-assign-card preview preview-${offset}`}>
+    <article className={`starting-assign-card preview ${side === "left" ? "preview-left" : "preview-right"}`}>
       <div className="starting-card-title">
         <img src={logo} alt="" />
         <div>

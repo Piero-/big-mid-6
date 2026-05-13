@@ -326,10 +326,13 @@ a { color: inherit; text-decoration: none; }
 
 .starting-carousel-stage {
   position: relative;
-  width: min(100%, 760px);
+  display: grid;
+  place-items: center;
+  width: min(100%, 1180px);
   min-height: clamp(430px, 58svh, 540px);
   isolation: isolate;
   perspective: 1200px;
+  overflow: visible;
 }
 
 .starting-assign-card {
@@ -351,19 +354,19 @@ a { color: inherit; text-decoration: none; }
   position: relative;
   z-index: 5;
   margin: 0 auto;
-  animation: startingSlideFromRight 360ms cubic-bezier(0.22, 1, 0.36, 1);
+  animation: startingCenterIn 300ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .starting-carousel.from-left .starting-assign-card.active {
-  animation-name: startingSlideFromLeft;
+  animation-name: startingCenterIn;
 }
 
 .starting-assign-card.preview {
   position: absolute;
-  top: 0;
+  top: 50%;
   left: 50%;
   pointer-events: none;
-  filter: saturate(0.72);
+  filter: saturate(0.72) blur(0.1px);
   overflow: hidden;
 }
 
@@ -372,64 +375,41 @@ a { color: inherit; text-decoration: none; }
   pointer-events: none;
 }
 
-.starting-assign-card.preview-1 {
-  z-index: 4;
-  opacity: 0.62;
-  transform: translate(calc(-50% + 86px), 42px) scale(0.92);
-  animation: startingPreviewDrift 360ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.starting-assign-card.preview-2 {
+.starting-assign-card.preview-left,
+.starting-assign-card.preview-right {
   z-index: 3;
-  opacity: 0.4;
-  transform: translate(calc(-50% + 150px), 82px) scale(0.84);
-  animation: startingPreviewDrift 360ms cubic-bezier(0.22, 1, 0.36, 1);
+  opacity: 0.38;
+  width: min(62vw, 560px);
+  min-height: 360px;
+  transform: translate(-50%, -50%) scale(0.82);
+  animation: startingSideSettle 300ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.starting-assign-card.preview-3 {
-  z-index: 2;
-  opacity: 0.24;
-  transform: translate(calc(-50% + 206px), 120px) scale(0.76);
-  animation: startingPreviewDrift 360ms cubic-bezier(0.22, 1, 0.36, 1);
+.starting-assign-card.preview-left {
+  transform: translate(calc(-50% - min(36vw, 410px)), -50%) scale(0.82);
 }
 
-.starting-carousel.from-left .starting-assign-card.preview-1 {
-  transform: translate(calc(-50% - 86px), 42px) scale(0.92);
+.starting-assign-card.preview-right {
+  transform: translate(calc(-50% + min(36vw, 410px)), -50%) scale(0.82);
 }
 
-.starting-carousel.from-left .starting-assign-card.preview-2 {
-  transform: translate(calc(-50% - 150px), 82px) scale(0.84);
-}
-
-.starting-carousel.from-left .starting-assign-card.preview-3 {
-  transform: translate(calc(-50% - 206px), 120px) scale(0.76);
-}
-
-@keyframes startingSlideFromRight {
+@keyframes startingCenterIn {
   from {
-    opacity: 0;
-    transform: translateX(86px) scale(0.98);
+    opacity: 0.88;
+    transform: scale(0.985);
   }
   to {
     opacity: 1;
-    transform: translateX(0) scale(1);
+    transform: scale(1);
   }
 }
 
-@keyframes startingSlideFromLeft {
+@keyframes startingSideSettle {
   from {
-    opacity: 0;
-    transform: translateX(-86px) scale(0.98);
+    opacity: 0.18;
   }
   to {
-    opacity: 1;
-    transform: translateX(0) scale(1);
-  }
-}
-
-@keyframes startingPreviewDrift {
-  from {
-    opacity: 0;
+    opacity: 0.38;
   }
 }
 
