@@ -578,15 +578,18 @@ function AdminApp() {
       {message && <div className="notice band">{message}</div>}
       <section className="toolbar band">
         <TournamentTabs value={slug} onChange={setSlug} />
-        <div className="toolbar-actions wrap">
-          <button className="button subtle" onClick={() => refreshAdmin(slug, session.token, setDetail, setLeaderboard)}>Refrescar</button>
-          <button className={adminView === "salidas" ? "button primary" : "button subtle"} onClick={() => setAdminView(adminView === "salidas" ? "panel" : "salidas")}>Evento de salidas</button>
-          <button className="button danger ghost" onClick={() => setResetScoresStep(1)}>Resetear torneo</button>
-          <button className="button subtle" onClick={() => updateStatus("active", false)}>Iniciar</button>
-          <button className="button subtle" onClick={() => updateStatus("paused", false)}>Pausar</button>
-          <button className="button danger" onClick={() => updateStatus("finished", true)}>Finalizar torneo</button>
-          <button className="button subtle" onClick={() => updateStatus("active", false)}>Reabrir</button>
-        </div>
+        <details className="admin-actions-menu">
+          <summary className="button subtle">Acciones</summary>
+          <div className="admin-actions-panel">
+            <button className="button subtle" onClick={() => refreshAdmin(slug, session.token, setDetail, setLeaderboard)}>Refrescar</button>
+            <button className={adminView === "salidas" ? "button primary" : "button subtle"} onClick={() => setAdminView(adminView === "salidas" ? "panel" : "salidas")}>Evento de salidas</button>
+            <button className="button subtle" onClick={() => updateStatus("active", false)}>Iniciar</button>
+            <button className="button subtle" onClick={() => updateStatus("paused", false)}>Pausar</button>
+            <button className="button subtle" onClick={() => updateStatus("active", false)}>Reabrir</button>
+            <button className="button danger" onClick={() => updateStatus("finished", true)}>Finalizar torneo</button>
+            <button className="button danger ghost" onClick={() => setResetScoresStep(1)}>Resetear torneo</button>
+          </div>
+        </details>
       </section>
       {resetScoresStep > 0 && (
         <div className="modal-backdrop" role="dialog" aria-modal="true">
