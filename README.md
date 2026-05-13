@@ -1,30 +1,54 @@
-# Tour Virtual Banreservas
+# BIG 6 / MID 6 Live Scoring
 
-Aplicacion para manejar categorias A/B, resultados semanales, pagos, final, donaciones, reportes PNG y standings overall.
+Aplicacion en espanol para operar dos torneos de golf con:
+
+- Vista publica sin login
+- Login por usuario/password para Admin y Equipo
+- Captura de gross score por hoyo
+- Clasificacion en vivo con polling cada 20 segundos
+- Cierre/reapertura de torneo
+- Auditoria de cambios
+- Exportacion CSV e impresion/PDF desde el panel admin
 
 ## Stack
 
 - Frontend: React + Vite
-- Backend: ASP.NET Core 8
-- Base de datos local: SQLite
-- Base de datos en hosting: Postgres via `DATABASE_URL`
+- Backend: ASP.NET Core 8 Web API
+- ORM: Entity Framework Core
+- Base local: SQLite
+- Produccion: PostgreSQL via `DATABASE_URL`
+- Autenticacion: JWT HS256 generado por el backend
+
+## Credenciales seed
+
+- Admin: `admin` / `admin2026`
+- Equipos: usernames tipo `bigequipo1`, `midequipo1`
+- Password inicial de equipos: `equipo2026`
+
+## Rutas principales
+
+- `/`
+- `/leaderboard`
+- `/leaderboard/big-6`
+- `/leaderboard/mid-6`
+- `/equipo/login`
+- `/equipo/marcador`
+- `/equipo/leaderboard`
+- `/admin/login`
+- `/admin/torneos`
+- `/admin/equipos`
+- `/admin/usuarios`
+- `/admin/resultados`
 
 ## Desarrollo local
 
-Instala dependencias del frontend:
-
-```powershell
-cd ClientApp
-npm.cmd install
-```
-
-Corre el backend:
+Backend:
 
 ```powershell
 dotnet run --project server/TourVirtual.Api --urls http://localhost:5000
 ```
 
-En otra terminal, corre React:
+Frontend:
 
 ```powershell
 cd ClientApp
@@ -37,63 +61,32 @@ Abre:
 http://localhost:5173
 ```
 
-## Produccion local en un solo servidor
-
-Compila React hacia el `wwwroot` del backend:
+## Produccion local en un servidor
 
 ```powershell
 cd ClientApp
 npm.cmd run build:server
+dotnet run --project ..\server\TourVirtual.Api
 ```
 
-Luego corre el backend:
-
-```powershell
-dotnet run --project server/TourVirtual.Api
-```
-
-## Deploy recomendado
-
-### 1. Base de datos
-
-Usa Neon Postgres o Supabase Postgres.
-
-Guarda el connection string como variable de entorno:
-
-```text
-DATABASE_URL
-```
-
-### 2. Backend en Render
-
-Render puede levantar este repo con Docker usando el archivo `render.yaml`.
-
-Variables de entorno necesarias:
+## Variables utiles
 
 ```text
 DATABASE_URL=postgres://...
-ALLOWED_ORIGINS=https://tu-url-de-vercel.vercel.app,http://localhost:5173
+ALLOWED_ORIGINS=https://tu-frontend.vercel.app,http://localhost:5173
+JWT_SECRET=usa-un-secreto-largo
 ```
 
-### 3. Frontend en Vercel
+## API destacada
 
-Configura Vercel con:
-
-```text
-Root Directory: ClientApp
-Build Command: npm run build
-Output Directory: dist
-```
-
-Variable de entorno:
-
-```text
-VITE_API_BASE_URL=https://tu-backend-en-render.onrender.com
-```
-
-## API
-
-- `GET /api/state`
-- `PUT /api/state`
-
-El frontend conserva la misma estructura de datos anterior para no perder reglas existentes: categorias A/B, semanas, equipos, pagos, inscripcion, final, donacion, reportes y standings.
+- `POST /api/auth/login`
+- `GET /api/tournaments`
+- `GET /api/tournaments/{slug}`
+- `GET /api/leaderboards/{slug}`
+- `PUT /api/teams/{teamId}/scores/{holeNumber}`
+- `POST /api/admin/tournaments/{slug}/status`
+- `GET /api/admin/audit/{slug}`
+- `POST /api/admin/teams`
+- `PUT /api/admin/teams/{teamId}`
+- `DELETE /api/admin/teams/{teamId}`
+- `POST /api/admin/users/reset-password`
