@@ -269,17 +269,23 @@ a { color: inherit; text-decoration: none; }
 .starting-event-view {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  gap: 18px;
+  gap: clamp(10px, 1.6vh, 18px);
   margin-top: 16px;
-  min-height: 100svh;
+  min-height: calc(100svh - 16px);
 }
 
 .starting-event-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 18px;
-  padding: 18px;
+  gap: clamp(12px, 2vw, 22px);
+  min-height: 0;
+  padding: clamp(12px, 1.8vh, 18px) clamp(14px, 2vw, 22px);
+  overflow: visible;
+}
+
+.starting-event-header > div:first-child {
+  min-width: 0;
 }
 
 .starting-event-header p,
@@ -293,15 +299,19 @@ a { color: inherit; text-decoration: none; }
 }
 
 .starting-event-header h2 {
+  max-width: 100%;
   margin: 0;
-  font-size: clamp(1.8rem, 4vw, 3rem);
+  font-size: clamp(1.45rem, 3vw, 2.55rem);
+  line-height: 0.98;
+  overflow-wrap: anywhere;
   text-transform: uppercase;
 }
 
 .starting-event-header span {
   display: block;
-  margin-top: 6px;
+  margin-top: 5px;
   color: var(--muted);
+  font-size: clamp(0.78rem, 1.2vw, 0.95rem);
   font-weight: 800;
 }
 
@@ -311,13 +321,13 @@ a { color: inherit; text-decoration: none; }
   gap: 16px;
   justify-items: center;
   min-height: 0;
-  padding: clamp(12px, 4vh, 42px) 0;
+  padding: clamp(6px, 2vh, 24px) 0;
 }
 
 .starting-carousel-stage {
   position: relative;
   width: min(100%, 760px);
-  min-height: 540px;
+  min-height: clamp(430px, 58svh, 540px);
   isolation: isolate;
   perspective: 1200px;
 }
@@ -555,6 +565,8 @@ a { color: inherit; text-decoration: none; }
 .starting-compact-list {
   display: grid;
   gap: 10px;
+  min-height: 0;
+  overflow: auto;
 }
 
 .starting-compact-card {
@@ -1851,6 +1863,7 @@ tbody tr.position-up td:last-child {
 
   .starting-event-header {
     display: grid;
+    gap: 12px;
   }
 
   .starting-assign-card {
