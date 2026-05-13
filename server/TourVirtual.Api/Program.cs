@@ -1133,7 +1133,7 @@ static string ResolveConnectionString(IConfiguration configuration)
 {
     var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
     var configured = configuration.GetConnectionString("Default");
-    var raw = string.IsNullOrWhiteSpace(databaseUrl) ? configured : databaseUrl;
+    var raw = CleanConnectionString(string.IsNullOrWhiteSpace(databaseUrl) ? configured : databaseUrl);
     if (string.IsNullOrWhiteSpace(raw))
     {
         return "Data Source=big6mid6.db";
@@ -1143,6 +1143,18 @@ static string ResolveConnectionString(IConfiguration configuration)
         || raw.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase)
         ? ConvertDatabaseUrl(raw)
         : raw;
+}
+
+static string CleanConnectionString(string? value)
+{
+    var raw = (value ?? string.Empty).Trim().Trim('"', '\'');
+    const string envPrefix = "DATABASE_URL=";
+    if (raw.StartsWith(envPrefix, StringComparison.OrdinalIgnoreCase))
+    {
+        raw = raw[envPrefix.Length..].Trim().Trim('"', '\'');
+    }
+
+    return raw;
 }
 
 static bool IsPostgresConnectionString(string connectionString) =>
