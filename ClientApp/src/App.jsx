@@ -378,6 +378,7 @@ function AdminApp() {
   const [resettingScores, setResettingScores] = useState(false);
   const [expandedTeamId, setExpandedTeamId] = useState(null);
   const [savingTeams, setSavingTeams] = useState(new Set());
+  const [adminView, setAdminView] = useState("panel");
 
   useEffect(() => {
     setPageTitle(slug, "Admin");
@@ -579,6 +580,7 @@ function AdminApp() {
         <TournamentTabs value={slug} onChange={setSlug} />
         <div className="toolbar-actions wrap">
           <button className="button subtle" onClick={() => refreshAdmin(slug, session.token, setDetail, setLeaderboard)}>Refrescar</button>
+          <button className={adminView === "salidas" ? "button primary" : "button subtle"} onClick={() => setAdminView(adminView === "salidas" ? "panel" : "salidas")}>Evento de salidas</button>
           <button className="button danger ghost" onClick={() => setResetScoresStep(1)}>Resetear torneo</button>
           <button className="button subtle" onClick={() => updateStatus("active", false)}>Iniciar</button>
           <button className="button subtle" onClick={() => updateStatus("paused", false)}>Pausar</button>
@@ -609,6 +611,15 @@ function AdminApp() {
           </section>
         </div>
       )}
+      {adminView === "salidas" ? (
+        <EventoSalidasAdmin
+          detail={detail}
+          onBack={() => setAdminView("panel")}
+          onSave={saveTeam}
+          savingTeams={savingTeams}
+          slug={slug}
+        />
+      ) : (
       <section className="admin-grid">
         <Panel title="Torneo" kicker={detail?.name || "Configuracion"}>
           {tournamentDraft && (
@@ -716,7 +727,124 @@ function AdminApp() {
           <LeaderboardTable data={leaderboard} compact />
         </Panel>
       </section>
+      )}
     </main>
+  );
+}
+
+function EventoSalidasAdmin({ detail, onBack, onSave, savingTeams, slug }) {
+  const teams = [...(detail?.teams || [])].sort((a, b) => a.id - b.id);
+  const assignedTeams = teams.filter(isTeamAssignedForStartingEvent);
+  const allAssigned = teams.length >= 22 && assignedTeams.length >= 22;
+  const logo = slug === "mid-6" ? "/assets/mid6-amarillo.png" : "/assets/big6-amarillo.png";
+
+  return (
+    <section className="starting-event-view">
+      <div className="starting-event-header band">
+        <div>
+          <p>Evento de salidas</p>
+          <h2>{detail?.name || "Torneo"}</h2>
+          <span>{assignedTeams.length} de 22 equipos asignados</span>
+        </div>
+        <div className="toolbar-actions wrap">
+          <button className="button subtle" type="button" onClick={onBack}>Volver al admin</button>
+        </div>
+      </div>
+
+      {allAssigned ? (
+        <div className="starting-compact-list">
+          {teams.map((team) => (
+            <StartingTeamCompactCard key={team.id} team={team} tournamentName={detail?.name} />
+          ))}
+        </div>
+      ) : (
+        <div className="starting-card-grid">
+          {teams.map((team, index) => (
+            <StartingTeamAssignCard
+              index={index}
+              key={team.id}
+              logo={logo}
+              onSave={onSave}
+              saving={savingTeams.has(team.id)}
+              team={team}
+              tournamentName={detail?.name}
+            />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function StartingTeamAssignCard({ index, logo, onSave, saving, team, tournamentName }) {
+  const [draft, setDraft] = useState(() => teamToDraft(team));
+
+  useEffect(() => {
+    setDraft(teamToDraft(team));
+  }, [team]);
+
+  function updateParticipant(participantIndex, value) {
+    const participants = [...draft.participants];
+    participants[participantIndex] = value;
+    setDraft({ ...draft, participants });
+  }
+
+  return (
+    <article className="starting-assign-card">
+      <div className="starting-card-title">
+        <img src={logo} alt="" />
+        <div>
+          <p>{tournamentName || "Torneo"}</p>
+          <span>Equipo {index + 1}</span>
+        </div>
+      </div>
+      <div className="starting-card-main">
+        <Field
+          label="Nombre del equipo"
+          placeholder="Team name"
+          value={draft.name}
+          onChange={(value) => setDraft({ ...draft, name: value })}
+        />
+        <Field
+          label="Hoyo de salida"
+          placeholder="Hoyo de salida"
+          type="number"
+          value={draft.startingHole}
+          onChange={(value) => setDraft({ ...draft, startingHole: Number(value) })}
+        />
+      </div>
+      <div className="starting-participants-box">
+        {draft.participants.map((value, participantIndex) => (
+          <Field
+            key={participantIndex}
+            label={`Jugador ${participantIndex + 1}`}
+            placeholder={`Participante ${participantIndex + 1}`}
+            value={value}
+            onChange={(next) => updateParticipant(participantIndex, next)}
+          />
+        ))}
+      </div>
+      <div className="starting-card-footer">
+        <Field label="El juez (opcional)" value={draft.judgeName} onChange={(value) => setDraft({ ...draft, judgeName: value })} />
+        <button className="button primary" type="button" onClick={() => onSave(draft)} disabled={saving}>
+          {saving ? "Guardando..." : "Guardar asignacion"}
+        </button>
+      </div>
+    </article>
+  );
+}
+
+function StartingTeamCompactCard({ team, tournamentName }) {
+  const participants = normalizeTeamParticipants(team.participants);
+  return (
+    <article className="starting-compact-card">
+      <div>
+        <p>{tournamentName || "Torneo"}</p>
+        <strong>{team.name}</strong>
+        <span>{participants.filter(Boolean).join(" · ")}</span>
+      </div>
+      <b>Hoyo {team.startingHole}</b>
+    </article>
   );
 }
 
@@ -1372,6 +1500,17 @@ function teamToDraft(team) {
     participants: normalizeTeamParticipants(team.participants || []),
     judgeName: team.judgeName || "",
   };
+}
+
+function isTeamAssignedForStartingEvent(team) {
+  const participants = normalizeTeamParticipants(team.participants);
+  const hasRealName = Boolean(team.name?.trim()) && !/^(BIG|MID) Equipo \d+$/i.test(team.name.trim());
+  const hasStartingHole = Number(team.startingHole) >= 1 && Number(team.startingHole) <= 18;
+  const hasSixPlayers = participants.every((name, index) => {
+    const value = name.trim();
+    return value.length > 0 && value.toLowerCase() !== `jugador ${index + 1}`;
+  });
+  return hasRealName && hasStartingHole && hasSixPlayers;
 }
 
 function normalizeTeamParticipants(participants) {
