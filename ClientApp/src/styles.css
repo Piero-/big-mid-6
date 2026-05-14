@@ -1341,9 +1341,82 @@ tbody tr.position-up td:last-child {
 
 .team-admin-summary {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) 120px auto;
-  align-items: end;
+  grid-template-columns: minmax(180px, 1fr) minmax(92px, auto) auto auto auto;
+  align-items: center;
   gap: 10px;
+}
+
+.team-admin-overview {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.team-admin-overview strong {
+  overflow: hidden;
+  font-size: 1.05rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-admin-overview span,
+.team-admin-handicap span,
+.team-admin-detail span {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.team-admin-handicap {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-width: 86px;
+  padding: 8px 10px;
+  border: 1px solid rgba(240, 196, 25, 0.28);
+  border-radius: 8px;
+  background: rgba(240, 196, 25, 0.1);
+}
+
+.team-admin-handicap strong {
+  color: var(--gold);
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.team-admin-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.team-admin-detail {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 10px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.team-admin-detail span {
+  grid-column: 1 / -1;
+}
+
+.team-admin-detail strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-admin-detail em {
+  color: var(--gold);
+  font-style: normal;
+  font-weight: 900;
 }
 
 .team-admin-expanded {
@@ -1910,6 +1983,7 @@ tbody tr.position-up td:last-child {
   .podium-admin-grid,
   .team-login-actions,
   .team-admin-summary,
+  .team-admin-details,
   .hole-setup-grid,
   .starting-event-header,
   .starting-card-main,

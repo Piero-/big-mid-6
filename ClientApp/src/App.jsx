@@ -8,7 +8,16 @@ const SLUGS = [
 const SCORE_OPTIONS = Array.from({ length: 20 }, (_, index) => String(index + 1));
 
 export default function App() {
-  const route = window.location.pathname;
+  const [route, setRoute] = useState(window.location.pathname);
+  useEffect(() => {
+    const syncRoute = () => setRoute(window.location.pathname);
+    window.addEventListener("popstate", syncRoute);
+    window.addEventListener("app:navigate", syncRoute);
+    return () => {
+      window.removeEventListener("popstate", syncRoute);
+      window.removeEventListener("app:navigate", syncRoute);
+    };
+  }, []);
   if (route.startsWith("/equipo")) return <TeamApp />;
   if (route.startsWith("/admin")) return <AdminApp />;
   return <PublicApp />;
@@ -24,6 +33,7 @@ function parseTeamRoute() {
 function navigateTo(path, replace = false) {
   if (window.location.pathname === path) return;
   window.history[replace ? "replaceState" : "pushState"]({}, "", path);
+  window.dispatchEvent(new Event("app:navigate"));
 }
 
 function setPageTitle(slug, title) {
@@ -366,6 +376,8 @@ function TeamApp() {
 }
 
 function AdminApp() {
+  const adminPath = window.location.pathname;
+  const isStartingEventPage = adminPath.includes("/evento-de-salidas");
   const [session, setSession] = useStoredSession("admin-session");
   const [form, setForm] = useState({ username: "admin", password: "" });
   const [slug, setSlug] = useState("big-6");
@@ -377,12 +389,16 @@ function AdminApp() {
   const [resetScoresStep, setResetScoresStep] = useState(0);
   const [resettingScores, setResettingScores] = useState(false);
   const [expandedTeamId, setExpandedTeamId] = useState(null);
+  const [editingTeamId, setEditingTeamId] = useState(null);
   const [savingTeams, setSavingTeams] = useState(new Set());
-  const [adminView, setAdminView] = useState("panel");
 
   useEffect(() => {
-    setPageTitle(slug, "Admin");
-  }, [slug]);
+    if (window.location.pathname === "/admin/login") navigateTo("/admin", true);
+  }, []);
+
+  useEffect(() => {
+    setPageTitle(slug, isStartingEventPage ? "Evento de salidas" : "Admin");
+  }, [isStartingEventPage, slug]);
 
   useEffect(() => {
     if (!session) return;
@@ -610,7 +626,7 @@ function AdminApp() {
           <summary className="button subtle">Acciones</summary>
           <div className="admin-actions-panel">
             <button className="button subtle" onClick={() => refreshAdmin(slug, session.token, setDetail, setLeaderboard)}>Refrescar</button>
-            <button className={adminView === "salidas" ? "button primary" : "button subtle"} onClick={() => setAdminView(adminView === "salidas" ? "panel" : "salidas")}>Evento de salidas</button>
+            <button className={isStartingEventPage ? "button primary" : "button subtle"} onClick={() => navigateTo(isStartingEventPage ? "/admin" : "/admin/evento-de-salidas")}>Evento de salidas</button>
             <button className="button subtle" onClick={() => updateStatus("active", false)}>Iniciar</button>
             <button className="button subtle" onClick={() => updateStatus("paused", false)}>Pausar</button>
             <button className="button subtle" onClick={() => updateStatus("active", false)}>Reabrir</button>
@@ -642,10 +658,10 @@ function AdminApp() {
           </section>
         </div>
       )}
-      {adminView === "salidas" ? (
+      {isStartingEventPage ? (
         <EventoSalidasAdmin
           detail={detail}
-          onBack={() => setAdminView("panel")}
+          onBack={() => navigateTo("/admin")}
           onSave={saveTeam}
           savingTeams={savingTeams}
           slug={slug}
@@ -744,9 +760,17 @@ function AdminApp() {
             {detail?.teams?.map((team) => (
               <TeamAdminCard
                 expanded={expandedTeamId === team.id}
+                editing={editingTeamId === team.id}
                 key={team.id}
                 onCopyLogin={copyTeamLogin}
-                onExpand={() => setExpandedTeamId(team.id)}
+                onEdit={() => {
+                  setEditingTeamId(editingTeamId === team.id ? null : team.id);
+                  setExpandedTeamId(null);
+                }}
+                onExpand={() => {
+                  setExpandedTeamId(expandedTeamId === team.id ? null : team.id);
+                  setEditingTeamId(null);
+                }}
                 onSave={saveTeam}
                 saving={savingTeams.has(team.id)}
                 team={team}
@@ -996,7 +1020,7 @@ function StartingTeamCompactCard({ team, tournamentName }) {
   );
 }
 
-function TeamAdminCard({ expanded, onCopyLogin, onExpand, onSave, saving, team }) {
+function TeamAdminCard({ editing, expanded, onCopyLogin, onEdit, onExpand, onSave, saving, team }) {
   const [draft, setDraft] = useState(() => teamToDraft(team));
 
   useEffect(() => {
@@ -1009,17 +1033,49 @@ function TeamAdminCard({ expanded, onCopyLogin, onExpand, onSave, saving, team }
     setDraft({ ...draft, participants });
   }
 
-  const hasActiveField = expanded || draft.name !== team.name || draft.startingHole !== team.startingHole || draft.judgeName !== (team.judgeName || "");
+  const startingDraft = teamToStartingEventDraft(team);
+  const handicapTotal = calculateHandicapTotal(startingDraft.handicaps);
+  const playerCount = startingDraft.participants.filter((name) => name.trim()).length;
 
   return (
-    <article className={`team-row team-admin-card ${hasActiveField ? "expanded" : ""}`} onFocus={onExpand}>
+    <article className={`team-row team-admin-card ${expanded || editing ? "expanded" : ""}`}>
       <div className="team-admin-summary">
-        <Field label="Nombre del equipo" value={draft.name} onChange={(value) => setDraft({ ...draft, name: value })} />
-        <Field label="Hoyo de salida" type="number" value={draft.startingHole} onChange={(value) => setDraft({ ...draft, startingHole: Number(value) })} />
+        <div className="team-admin-overview">
+          <strong>{team.name}</strong>
+          <span>Hoyo de salida {team.startingHole || "-"}</span>
+          <span>{playerCount} jugadores</span>
+        </div>
+        <div className="team-admin-handicap">
+          <span>Handicap</span>
+          <strong>{formatHandicapTotal(handicapTotal)}</strong>
+        </div>
         <button className="button subtle" type="button" onClick={() => onCopyLogin(team)}>Copiar login</button>
+        <button className="button primary" type="button" onClick={onEdit}>Editar equipo</button>
+        <button className="button subtle" type="button" onClick={onExpand}>{expanded ? "Ocultar detalles" : "Ver detalles"}</button>
       </div>
-      {hasActiveField && (
+      {expanded && (
+        <div className="team-admin-details">
+          {startingDraft.participants.map((name, index) => (
+            <div className="team-admin-detail" key={index}>
+              <span>Jugador {index + 1}</span>
+              <strong>{name || "-"}</strong>
+              <em>{startingDraft.handicaps[index] || ""}</em>
+            </div>
+          ))}
+          {team.judgeName && (
+            <div className="team-admin-detail">
+              <span>El juez</span>
+              <strong>{team.judgeName}</strong>
+            </div>
+          )}
+        </div>
+      )}
+      {editing && (
         <div className="team-admin-expanded">
+          <div className="participants-grid">
+            <Field label="Nombre del equipo" value={draft.name} onChange={(value) => setDraft({ ...draft, name: value })} />
+            <Field label="Hoyo de salida" type="number" value={draft.startingHole} onChange={(value) => setDraft({ ...draft, startingHole: Number(value) })} />
+          </div>
           <div className="participants-grid">
             {draft.participants.map((value, index) => (
               <Field key={index} label={`Jugador ${index + 1}`} value={value} onChange={(next) => updateParticipant(index, next)} />
