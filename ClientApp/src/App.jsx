@@ -471,7 +471,7 @@ function AdminApp() {
         body: {
           name: team.name,
           startingHole: Number(team.startingHole) || 1,
-          participants: normalizeTeamParticipants(team.participants),
+          participants: team.handicaps ? serializeParticipantsWithHandicaps(team) : normalizeTeamParticipants(team.participants),
           judgeName: team.judgeName || "",
         },
       });
@@ -831,6 +831,7 @@ function EventoSalidasAdmin({ detail, onBack, onSave, savingTeams, slug }) {
 
 function StartingTeamAssignCard({ index, logo, onNext, onPrevious, onSave, saving, team, total, tournamentName }) {
   const [draft, setDraft] = useState(() => teamToStartingEventDraft(team));
+  const handicapRefs = useRef([]);
 
   useEffect(() => {
     setDraft(teamToStartingEventDraft(team));
@@ -842,6 +843,17 @@ function StartingTeamAssignCard({ index, logo, onNext, onPrevious, onSave, savin
     setDraft({ ...draft, participants });
   }
 
+  function updateHandicap(participantIndex, value) {
+    const handicaps = [...draft.handicaps];
+    handicaps[participantIndex] = value;
+    setDraft({ ...draft, handicaps });
+    if (/^\d+(\.\d+)$/.test(value.trim()) && participantIndex < draft.handicaps.length - 1) {
+      requestAnimationFrame(() => handicapRefs.current[participantIndex + 1]?.focus());
+    }
+  }
+
+  const handicapTotal = draft.handicaps.reduce((sum, value) => sum + (Number.parseFloat(value) || 0), 0);
+
   return (
     <article className="starting-assign-card active">
       <div className="starting-card-title">
@@ -849,6 +861,10 @@ function StartingTeamAssignCard({ index, logo, onNext, onPrevious, onSave, savin
         <div>
           <p>{tournamentName || "Torneo"}</p>
           <span>Equipo {index + 1} de {total}</span>
+        </div>
+        <div className="starting-handicap-total">
+          <span>Handicap total</span>
+          <strong>{formatHandicapTotal(handicapTotal)}</strong>
         </div>
       </div>
       <div className="starting-card-main">
@@ -869,13 +885,21 @@ function StartingTeamAssignCard({ index, logo, onNext, onPrevious, onSave, savin
       </div>
       <div className="starting-participants-box">
         {draft.participants.map((value, participantIndex) => (
-          <Field
-            key={participantIndex}
-            label={`Jugador ${participantIndex + 1}`}
-            placeholder={`Participante ${participantIndex + 1}`}
-            value={value}
-            onChange={(next) => updateParticipant(participantIndex, next)}
-          />
+          <label className="starting-player-field" key={participantIndex}>
+            <span>Jugador {participantIndex + 1}</span>
+            <input
+              placeholder={`Participante ${participantIndex + 1}`}
+              value={value}
+              onChange={(event) => updateParticipant(participantIndex, event.target.value)}
+            />
+            <input
+              inputMode="decimal"
+              placeholder="Handicap"
+              ref={(node) => { handicapRefs.current[participantIndex] = node; }}
+              value={draft.handicaps[participantIndex] || ""}
+              onChange={(event) => updateHandicap(participantIndex, event.target.value)}
+            />
+          </label>
         ))}
       </div>
       <div className="starting-card-footer">
@@ -891,6 +915,7 @@ function StartingTeamAssignCard({ index, logo, onNext, onPrevious, onSave, savin
 
 function StartingTeamPreviewCard({ index, logo, side, team, tournamentName }) {
   const draft = teamToStartingEventDraft(team);
+  const handicapTotal = draft.handicaps.reduce((sum, value) => sum + (Number.parseFloat(value) || 0), 0);
   return (
     <article className={`starting-assign-card preview ${side === "left" ? "preview-left" : "preview-right"}`}>
       <div className="starting-card-title">
@@ -898,6 +923,10 @@ function StartingTeamPreviewCard({ index, logo, side, team, tournamentName }) {
         <div>
           <p>{tournamentName || "Torneo"}</p>
           <span>Equipo {index + 1}</span>
+        </div>
+        <div className="starting-handicap-total">
+          <span>Handicap total</span>
+          <strong>{formatHandicapTotal(handicapTotal)}</strong>
         </div>
       </div>
       <div className="starting-card-main">
@@ -911,9 +940,10 @@ function StartingTeamPreviewCard({ index, logo, side, team, tournamentName }) {
       </div>
       <div className="starting-participants-box readonly">
         {draft.participants.map((value, participantIndex) => (
-          <div className="starting-readonly-box" key={participantIndex}>
+          <div className="starting-readonly-box player-preview" key={participantIndex}>
             <span>Jugador {participantIndex + 1}</span>
             <strong>{value || ""}</strong>
+            <em>{draft.handicaps[participantIndex] || ""}</em>
           </div>
         ))}
       </div>
@@ -1579,6 +1609,11 @@ function formatMoney(value) {
   }).format(Number(value) || 0);
 }
 
+function formatHandicapTotal(value) {
+  const rounded = Math.round((Number(value) || 0) * 10) / 10;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+}
+
 function teamToDraft(team) {
   return {
     id: team.id,
@@ -1594,12 +1629,14 @@ function teamToStartingEventDraft(team) {
     const value = name || "";
     return value.trim().toLowerCase() === `jugador ${index + 1}` ? "" : value;
   });
+  const handicaps = normalizeTeamParticipants(team.participantHandicaps || []).map((value) => value || "");
   const isDefaultSlot = /^(BIG|MID) Equipo \d+$/i.test((team.name || "").trim()) && participants.every((name) => !name.trim());
   return {
     id: team.id,
     name: team.name || "",
     startingHole: isDefaultSlot ? "" : (team.startingHole || ""),
     participants,
+    handicaps,
     judgeName: team.judgeName || "",
   };
 }
@@ -1617,6 +1654,17 @@ function isTeamAssignedForStartingEvent(team) {
 
 function normalizeTeamParticipants(participants) {
   return Array.from({ length: 6 }, (_, index) => participants[index] || "");
+}
+
+function serializeParticipantsWithHandicaps(team) {
+  const participants = normalizeTeamParticipants(team.participants || []);
+  const handicaps = normalizeTeamParticipants(team.handicaps || []);
+  return participants.map((name, index) => {
+    const cleanName = (name || "").trim();
+    const cleanHandicap = (handicaps[index] || "").trim();
+    if (!cleanName) return "";
+    return cleanHandicap ? `${cleanName}::HCP:${cleanHandicap}` : cleanName;
+  });
 }
 
 function toDateTimeLocal(value) {

@@ -902,6 +902,7 @@ static object TournamentDetail(Tournament tournament) => new
         item.StartingHole,
         username = item.Users.OrderBy(user => user.Id).FirstOrDefault()?.Username,
         participants = ParticipantNames(item.Participants),
+        participantHandicaps = ParticipantHandicaps(item.Participants),
         judgeName = JudgeName(item.Participants),
         scores = item.Scores.OrderBy(score => score.HoleNumber).Select(score => new
         {
@@ -1044,7 +1045,27 @@ static string[] ParticipantNames(string participants) =>
     participants
         .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
         .Where(item => !item.StartsWith("JUEZ:", StringComparison.OrdinalIgnoreCase))
+        .Select(ParticipantName)
         .ToArray();
+
+static string[] ParticipantHandicaps(string participants) =>
+    participants
+        .Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Where(item => !item.StartsWith("JUEZ:", StringComparison.OrdinalIgnoreCase))
+        .Select(ParticipantHandicap)
+        .ToArray();
+
+static string ParticipantName(string participant)
+{
+    var markerIndex = participant.IndexOf("::HCP:", StringComparison.OrdinalIgnoreCase);
+    return (markerIndex < 0 ? participant : participant[..markerIndex]).Trim();
+}
+
+static string ParticipantHandicap(string participant)
+{
+    var markerIndex = participant.IndexOf("::HCP:", StringComparison.OrdinalIgnoreCase);
+    return markerIndex < 0 ? string.Empty : participant[(markerIndex + "::HCP:".Length)..].Trim();
+}
 
 static string JudgeName(string participants) =>
     participants

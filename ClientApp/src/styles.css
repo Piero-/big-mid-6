@@ -446,6 +446,30 @@ a { color: inherit; text-decoration: none; }
   font-weight: 900;
 }
 
+.starting-handicap-total {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  margin-left: auto;
+  padding: 10px 12px;
+  border: 1px solid rgba(240, 196, 25, 0.28);
+  border-radius: 8px;
+  background: rgba(240, 196, 25, 0.1);
+}
+
+.starting-handicap-total span {
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.starting-handicap-total strong {
+  color: var(--gold);
+  font-size: clamp(1.2rem, 2vw, 1.65rem);
+  line-height: 1;
+}
+
 .starting-card-main {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(132px, 0.28fr);
@@ -500,6 +524,40 @@ a { color: inherit; text-decoration: none; }
   align-items: stretch;
 }
 
+.starting-player-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(86px, 0.34fr);
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.starting-player-field span {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.starting-player-field input {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.08);
+  color: var(--ink);
+  padding: 0 11px;
+  outline: none;
+}
+
+.starting-player-field input:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 4px rgba(240,196,25,0.14);
+}
+
 .starting-readonly-box {
   display: grid;
   gap: 8px;
@@ -523,6 +581,21 @@ a { color: inherit; text-decoration: none; }
   font-size: 1rem;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.starting-readonly-box.player-preview {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.starting-readonly-box.player-preview span {
+  grid-column: 1 / -1;
+}
+
+.starting-readonly-box.player-preview em {
+  color: var(--gold);
+  font-style: normal;
+  font-weight: 900;
 }
 
 .starting-readonly-box.team-name-preview {
