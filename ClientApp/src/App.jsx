@@ -1623,7 +1623,7 @@ function calculateHandicapTotal(handicaps) {
     if (!cleanValue) return sum;
     const numericValue = Number.parseFloat(cleanValue);
     if (!Number.isFinite(numericValue)) return sum;
-    return sum + (cleanValue.startsWith("+") || cleanValue.startsWith("-") ? numericValue : -numericValue);
+    return sum + (cleanValue.startsWith("+") || cleanValue.startsWith("-") ? -Math.abs(numericValue) : numericValue);
   }, 0);
 }
 
