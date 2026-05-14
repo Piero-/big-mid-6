@@ -476,7 +476,9 @@ function AdminApp() {
         },
       });
       setMessage(`Equipo ${team.name} guardado.`);
-      refreshAdmin(slug, session.token, setDetail, setLeaderboard);
+      await refreshAdmin(slug, session.token, setDetail, setLeaderboard);
+    } catch (error) {
+      setMessage(error.message || "No pudimos guardar el equipo.");
     } finally {
       setSavingTeams((current) => {
         const next = new Set(current);
@@ -1639,10 +1641,11 @@ function teamToDraft(team) {
 
 function teamToStartingEventDraft(team) {
   const participants = normalizeTeamParticipants(team.participants || []).map((name, index) => {
-    const value = name || "";
+    const value = parseParticipantName(name || "");
     return value.trim().toLowerCase() === `jugador ${index + 1}` ? "" : value;
   });
-  const handicaps = normalizeTeamParticipants(team.participantHandicaps || []).map((value) => value || "");
+  const fallbackHandicaps = normalizeTeamParticipants(team.participants || []).map((value) => parseParticipantHandicap(value || ""));
+  const handicaps = normalizeTeamParticipants(team.participantHandicaps || fallbackHandicaps).map((value) => value || "");
   const isDefaultSlot = /^(BIG|MID) Equipo \d+$/i.test((team.name || "").trim()) && participants.every((name) => !name.trim());
   return {
     id: team.id,
@@ -1678,6 +1681,17 @@ function serializeParticipantsWithHandicaps(team) {
     if (!cleanName) return "";
     return cleanHandicap ? `${cleanName}::HCP:${cleanHandicap}` : cleanName;
   });
+}
+
+function parseParticipantName(value) {
+  const markerIndex = String(value).toLowerCase().indexOf("::hcp:");
+  return markerIndex < 0 ? String(value) : String(value).slice(0, markerIndex).trim();
+}
+
+function parseParticipantHandicap(value) {
+  const rawValue = String(value);
+  const markerIndex = rawValue.toLowerCase().indexOf("::hcp:");
+  return markerIndex < 0 ? "" : rawValue.slice(markerIndex + "::HCP:".length).trim();
 }
 
 function toDateTimeLocal(value) {
