@@ -832,6 +832,7 @@ function EventoSalidasAdmin({ detail, onBack, onSave, savingTeams, slug }) {
 function StartingTeamAssignCard({ index, logo, onNext, onPrevious, onSave, saving, team, total, tournamentName }) {
   const [draft, setDraft] = useState(() => teamToStartingEventDraft(team));
   const handicapRefs = useRef([]);
+  const participantRefs = useRef([]);
 
   useEffect(() => {
     setDraft(teamToStartingEventDraft(team));
@@ -848,7 +849,7 @@ function StartingTeamAssignCard({ index, logo, onNext, onPrevious, onSave, savin
     handicaps[participantIndex] = value;
     setDraft({ ...draft, handicaps });
     if (/^\d+(\.\d+)$/.test(value.trim()) && participantIndex < draft.handicaps.length - 1) {
-      requestAnimationFrame(() => handicapRefs.current[participantIndex + 1]?.focus());
+      requestAnimationFrame(() => participantRefs.current[participantIndex + 1]?.focus());
     }
   }
 
@@ -889,12 +890,14 @@ function StartingTeamAssignCard({ index, logo, onNext, onPrevious, onSave, savin
             <span>Jugador {participantIndex + 1}</span>
             <input
               placeholder={`Participante ${participantIndex + 1}`}
+              ref={(node) => { participantRefs.current[participantIndex] = node; }}
               value={value}
               onChange={(event) => updateParticipant(participantIndex, event.target.value)}
             />
             <input
               inputMode="decimal"
-              placeholder="Handicap"
+              maxLength="4"
+              placeholder="00.0"
               ref={(node) => { handicapRefs.current[participantIndex] = node; }}
               value={draft.handicaps[participantIndex] || ""}
               onChange={(event) => updateHandicap(participantIndex, event.target.value)}
