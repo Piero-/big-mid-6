@@ -390,6 +390,27 @@ function AdminApp() {
   }, [slug, session]);
 
   useEffect(() => {
+    if (!session?.token) return;
+    let cancelled = false;
+    api("/api/me", { token: session.token })
+      .then((data) => {
+        if (!cancelled && data.role !== "Admin") {
+          setSession(null);
+          setMessage("Este acceso es solo para admin.");
+        }
+      })
+      .catch((error) => {
+        if (!cancelled && error.status === 401) {
+          setSession(null);
+          setMessage("Sesion expirada. Entra de nuevo para guardar cambios.");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.token, setSession]);
+
+  useEffect(() => {
     if (!detail) return;
     setTournamentDraft({
       name: detail.name || "",
@@ -478,6 +499,11 @@ function AdminApp() {
       setMessage(`Equipo ${team.name} guardado.`);
       await refreshAdmin(slug, session.token, setDetail, setLeaderboard);
     } catch (error) {
+      if (error.status === 401) {
+        setSession(null);
+        setMessage("Sesion expirada. Entra de nuevo para guardar cambios.");
+        return;
+      }
       setMessage(error.message || "No pudimos guardar el equipo.");
     } finally {
       setSavingTeams((current) => {
@@ -1554,7 +1580,9 @@ async function api(path, options = {}) {
       if (response.status === 401) message = "Credenciales invalidas.";
       if (response.status === 403) message = "No tienes permiso para esta accion.";
     }
-    throw new Error(message);
+    const error = new Error(message);
+    error.status = response.status;
+    throw error;
   }
 
   if (response.status === 204) return null;
