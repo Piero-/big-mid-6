@@ -853,7 +853,7 @@ function StartingTeamAssignCard({ index, logo, onNext, onPrevious, onSave, savin
     }
   }
 
-  const handicapTotal = draft.handicaps.reduce((sum, value) => sum + (Number.parseFloat(value) || 0), 0);
+  const handicapTotal = calculateHandicapTotal(draft.handicaps);
 
   return (
     <article className="starting-assign-card active">
@@ -918,7 +918,7 @@ function StartingTeamAssignCard({ index, logo, onNext, onPrevious, onSave, savin
 
 function StartingTeamPreviewCard({ index, logo, side, team, tournamentName }) {
   const draft = teamToStartingEventDraft(team);
-  const handicapTotal = draft.handicaps.reduce((sum, value) => sum + (Number.parseFloat(value) || 0), 0);
+  const handicapTotal = calculateHandicapTotal(draft.handicaps);
   return (
     <article className={`starting-assign-card preview ${side === "left" ? "preview-left" : "preview-right"}`}>
       <div className="starting-card-title">
@@ -1615,6 +1615,16 @@ function formatMoney(value) {
 function formatHandicapTotal(value) {
   const rounded = Math.round((Number(value) || 0) * 10) / 10;
   return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+}
+
+function calculateHandicapTotal(handicaps) {
+  return normalizeTeamParticipants(handicaps || []).reduce((sum, value) => {
+    const cleanValue = String(value || "").trim();
+    if (!cleanValue) return sum;
+    const numericValue = Number.parseFloat(cleanValue);
+    if (!Number.isFinite(numericValue)) return sum;
+    return sum + (cleanValue.startsWith("+") || cleanValue.startsWith("-") ? numericValue : -numericValue);
+  }, 0);
 }
 
 function teamToDraft(team) {
