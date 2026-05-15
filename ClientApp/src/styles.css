@@ -1510,6 +1510,83 @@ tbody tr.position-up td:last-child {
 }
 @keyframes shimmer { to { background-position: -200% 0; } }
 
+.app-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 50% 44%, rgba(240, 196, 25, 0.16), transparent 18rem),
+    linear-gradient(180deg, #071326 0%, #050b17 100%);
+  animation: appLoaderExit 0.34s ease 1.56s forwards;
+}
+
+.loader-six {
+  width: clamp(82px, 14vw, 172px);
+  height: auto;
+  overflow: visible;
+  filter: drop-shadow(0 26px 52px rgba(0, 0, 0, 0.42));
+}
+
+.loader-piece {
+  fill: #ffffff;
+  opacity: 0;
+  transform-box: view-box;
+  transform-origin: center;
+  animation: loaderPieceJoin 0.84s cubic-bezier(0.18, 0.82, 0.24, 1) forwards;
+}
+
+.piece-one { --loader-x: -70px; --loader-y: -58px; animation-delay: 0.02s; }
+.piece-two { --loader-x: 74px; --loader-y: -52px; animation-delay: 0.1s; }
+.piece-three { --loader-x: -66px; --loader-y: 64px; animation-delay: 0.18s; }
+.piece-four { --loader-x: 72px; --loader-y: 58px; animation-delay: 0.26s; }
+
+.loader-six-final {
+  fill: var(--gold);
+  opacity: 0;
+  transform-box: view-box;
+  transform-origin: center;
+  animation: loaderFinalReveal 0.58s ease 0.88s forwards;
+}
+
+@keyframes loaderPieceJoin {
+  0% {
+    opacity: 0;
+    transform: translate(var(--loader-x), var(--loader-y)) scale(0.92);
+  }
+  62% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+@keyframes loaderFinalReveal {
+  0% {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes appLoaderExit {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
 .auth-shell {
   min-height: 100vh;
   display: grid;

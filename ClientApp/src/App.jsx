@@ -1,14 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
 const SLUGS = [
   { slug: "big-6", label: "BIG 6", logo: "/assets/big6-amarillo.png" },
   { slug: "mid-6", label: "MID 6", logo: "/assets/mid6-amarillo.png" },
 ];
 const SCORE_OPTIONS = Array.from({ length: 20 }, (_, index) => String(index + 1));
+const LOADING_SIX_PATH = "M225.047 520.556C179.031 520.556 139.007 510.969 104.974 491.796C71.4207 472.623 45.5367 444.582 27.322 407.673C9.10734 370.764 0 325.228 0 271.063C0 213.064 10.785 163.932 32.355 123.668C54.4043 83.404 84.6023 52.7267 122.949 31.636C161.775 10.5453 206.353 0 256.683 0C283.526 0 309.17 2.87599 333.616 8.62798C358.062 14.38 379.153 23.008 396.888 34.512L353.748 120.073C339.847 110.486 324.988 104.015 309.17 100.66C293.352 96.8253 276.815 94.908 259.559 94.908C215.94 94.908 181.428 108.09 156.023 134.453C130.618 160.816 117.916 199.882 117.916 251.65C117.916 260.278 117.916 269.865 117.916 280.41C118.395 290.955 119.833 301.501 122.23 312.046L89.875 281.848C98.9823 263.154 110.726 247.576 125.106 235.113C139.486 222.171 156.502 212.584 176.155 206.353C196.287 199.642 218.336 196.287 242.303 196.287C274.898 196.287 304.137 202.758 330.021 215.7C355.905 228.642 376.516 246.857 391.855 270.344C407.673 293.831 415.582 321.393 415.582 353.029C415.582 387.062 406.954 416.78 389.698 442.185C372.921 467.11 350.153 486.523 321.393 500.424C293.112 513.845 260.997 520.556 225.047 520.556ZM218.576 433.557C234.873 433.557 249.253 430.681 261.716 424.929C274.658 418.698 284.724 409.83 291.914 398.326C299.104 386.822 302.699 373.64 302.699 358.781C302.699 335.773 294.79 317.558 278.972 304.137C263.633 290.236 243.022 283.286 217.138 283.286C199.882 283.286 184.783 286.641 171.841 293.352C158.899 299.583 148.593 308.451 140.924 319.955C133.734 330.98 130.139 343.922 130.139 358.781C130.139 373.161 133.734 386.103 140.924 397.607C148.114 408.632 158.18 417.499 171.122 424.21C184.064 430.441 199.882 433.557 218.576 433.557Z";
 
 export default function App() {
   const [route, setRoute] = useState(window.location.pathname);
+  const [showLoadingScreen, setShowLoadingScreen] = useState(true);
+
   useEffect(() => {
     const syncRoute = () => setRoute(window.location.pathname);
     window.addEventListener("popstate", syncRoute);
@@ -18,9 +21,24 @@ export default function App() {
       window.removeEventListener("app:navigate", syncRoute);
     };
   }, []);
-  if (route.startsWith("/equipo")) return <TeamApp />;
-  if (route.startsWith("/admin")) return <AdminApp />;
-  return <PublicApp />;
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setShowLoadingScreen(false), 1900);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  const currentView = route.startsWith("/equipo")
+    ? <TeamApp />
+    : route.startsWith("/admin")
+      ? <AdminApp />
+      : <PublicApp />;
+
+  return (
+    <>
+      {currentView}
+      {showLoadingScreen && <AppLoadingScreen />}
+    </>
+  );
 }
 
 function parseTeamRoute() {
@@ -1551,6 +1569,29 @@ function HoleSetupGroup({ title, holes, onParChange }) {
 
 function LeaderboardSkeleton() {
   return <div className="skeleton-list">{Array.from({ length: 6 }).map((_, index) => <span key={index} />)}</div>;
+}
+
+function AppLoadingScreen() {
+  return (
+    <div className="app-loader" role="status" aria-label="Cargando">
+      <svg className="loader-six" viewBox="0 0 416 521" aria-hidden="true">
+        <defs>
+          <path id="loader-six-path" d={LOADING_SIX_PATH} />
+          <clipPath id="loader-six-top-left"><rect x="0" y="0" width="208" height="260.5" /></clipPath>
+          <clipPath id="loader-six-top-right"><rect x="208" y="0" width="208" height="260.5" /></clipPath>
+          <clipPath id="loader-six-bottom-left"><rect x="0" y="260.5" width="208" height="260.5" /></clipPath>
+          <clipPath id="loader-six-bottom-right"><rect x="208" y="260.5" width="208" height="260.5" /></clipPath>
+        </defs>
+        <g className="loader-six-pieces">
+          <use href="#loader-six-path" className="loader-piece piece-one" clipPath="url(#loader-six-top-left)" />
+          <use href="#loader-six-path" className="loader-piece piece-two" clipPath="url(#loader-six-top-right)" />
+          <use href="#loader-six-path" className="loader-piece piece-three" clipPath="url(#loader-six-bottom-left)" />
+          <use href="#loader-six-path" className="loader-piece piece-four" clipPath="url(#loader-six-bottom-right)" />
+        </g>
+        <use href="#loader-six-path" className="loader-six-final" />
+      </svg>
+    </div>
+  );
 }
 
 function Panel({ title, kicker, children, className = "" }) {
