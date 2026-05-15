@@ -2062,6 +2062,9 @@ tbody tr.position-up td:last-child {
   .share-button {
     width: 100%;
   }
+  .tv-toggle-button {
+    display: none;
+  }
   .tabs { width: 100%; }
   .tabs button { flex: 1; }
   .meta-grid, .participants-grid, .score-grid {

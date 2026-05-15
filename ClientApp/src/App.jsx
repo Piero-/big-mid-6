@@ -165,7 +165,7 @@ function PublicApp() {
       <section className="toolbar band">
         <TournamentTabs value={slug} onChange={setSlug} />
         <div className="toolbar-actions">
-          <button className="button subtle" onClick={() => setIsTv((value) => !value)}>
+          <button className="button subtle tv-toggle-button" onClick={() => setIsTv((value) => !value)}>
             {isTv ? "Salir TV" : "Modo TV"}
           </button>
           {!isTv && (
