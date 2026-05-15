@@ -1691,6 +1691,46 @@ tbody tr.position-up td:last-child {
   padding: 12px;
   overflow: hidden;
 }
+.tv-mode .podium-strip {
+  gap: clamp(18px, 1.5vw, 30px);
+  margin-bottom: clamp(18px, 1.6vw, 30px);
+  padding: clamp(20px, 2vw, 34px);
+  border-width: 2px;
+}
+.tv-mode .podium-card {
+  min-height: clamp(170px, 13vw, 260px);
+  padding: clamp(20px, 2vw, 34px);
+  border-width: 2px;
+}
+.tv-mode .podium-card.first {
+  min-height: clamp(230px, 17vw, 340px);
+}
+.tv-mode .podium-card.second {
+  min-height: clamp(200px, 15vw, 300px);
+}
+.tv-mode .podium-card span {
+  font-size: clamp(1rem, 1.2vw, 1.55rem);
+}
+.tv-mode .podium-card strong {
+  margin-top: clamp(12px, 1vw, 20px);
+  font-size: clamp(2rem, 2.3vw, 3.7rem);
+  line-height: 1;
+}
+.tv-mode .podium-card.first strong {
+  font-size: clamp(2.4rem, 2.8vw, 4.2rem);
+}
+.tv-mode .podium-card.second strong {
+  font-size: clamp(2.15rem, 2.5vw, 3.9rem);
+}
+.tv-mode .podium-card em {
+  margin-top: clamp(10px, 1vw, 18px);
+  font-size: clamp(1.15rem, 1.45vw, 2rem);
+}
+.tv-mode .podium-card b {
+  right: clamp(16px, 1.6vw, 28px);
+  bottom: clamp(-34px, -2vw, -20px);
+  font-size: clamp(7rem, 8vw, 12rem);
+}
 .tv-mode table {
   min-width: 100%;
   font-size: clamp(1.55rem, 2vw, 2.75rem);
