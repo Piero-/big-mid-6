@@ -2127,6 +2127,15 @@ tbody tr.position-up td:last-child {
   .starting-compact-card b {
     justify-self: start;
   }
+  .podium-card.first {
+    order: 1;
+  }
+  .podium-card.second {
+    order: 2;
+  }
+  .podium-card.third {
+    order: 3;
+  }
   .score-card-stack {
     width: min(100%, 430px);
     height: clamp(470px, calc(100svh - 210px), 560px);
