@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
@@ -12,6 +13,8 @@ var builder = WebApplication.CreateBuilder(args);
 var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET")
     ?? "cambia-este-secreto-en-produccion-big6-mid6";
 var connectionString = ResolveConnectionString(builder.Configuration);
+var leaderboardCache = new ConcurrentDictionary<string, CachedLeaderboard>();
+var leaderboardCacheDuration = TimeSpan.FromSeconds(3);
 var pgaPasswordPool = new[]
 {
     "tigerwoods", "rorymcilroy", "scottiescheffler", "jonrahm", "jordanspieth", "justinthomas",
@@ -115,8 +118,22 @@ app.MapGet("/api/tournaments/{slug}", async (string slug, AppDbContext db) =>
 
 app.MapGet("/api/leaderboards/{slug}", async (string slug, AppDbContext db) =>
 {
+    var cacheKey = NormalizeCacheKey(slug);
+    if (leaderboardCache.TryGetValue(cacheKey, out var cached)
+        && DateTimeOffset.UtcNow - cached.CachedAt < leaderboardCacheDuration)
+    {
+        return Results.Ok(cached.Payload);
+    }
+
     var tournament = await LoadTournament(db, slug);
-    return tournament is null ? Results.NotFound() : Results.Ok(BuildLeaderboard(tournament));
+    if (tournament is null)
+    {
+        return Results.NotFound();
+    }
+
+    var payload = BuildLeaderboard(tournament);
+    leaderboardCache[cacheKey] = new CachedLeaderboard(DateTimeOffset.UtcNow, payload);
+    return Results.Ok(payload);
 });
 
 app.MapGet("/api/me", async (HttpContext httpContext, AppDbContext db) =>
@@ -199,6 +216,7 @@ app.MapPut("/api/teams/{teamId:int}/scores/{holeNumber:int}", async (
         ChangedAt = entry.UpdatedAt
     });
     await db.SaveChangesAsync();
+    InvalidateLeaderboardCache(team.Tournament.Slug);
 
     return Results.Ok(new
     {
@@ -261,6 +279,7 @@ app.MapPost("/api/admin/tournaments/{slug}/status", async (
     tournament.IsClosed = request.IsClosed;
     tournament.UpdatedAt = DateTimeOffset.UtcNow;
     await db.SaveChangesAsync();
+    InvalidateLeaderboardCache(slug);
     return Results.Ok(TournamentSummary(tournament));
 });
 
@@ -309,6 +328,7 @@ app.MapPost("/api/admin/tournaments/{slug}/reset-scores", async (
 
     tournament.UpdatedAt = now;
     await db.SaveChangesAsync();
+    InvalidateLeaderboardCache(slug);
     return Results.Ok(new { deletedScores = scores.Count });
 });
 
@@ -367,6 +387,7 @@ app.MapPut("/api/admin/tournaments/{slug}", async (
     }
 
     await db.SaveChangesAsync();
+    InvalidateLeaderboardCache(slug);
     return Results.Ok(TournamentSummary(tournament));
 });
 
@@ -419,6 +440,7 @@ app.MapPut("/api/admin/tournaments/{slug}/podium", async (
     setting.UpdatedAt = DateTimeOffset.UtcNow;
     tournament.UpdatedAt = setting.UpdatedAt;
     await db.SaveChangesAsync();
+    InvalidateLeaderboardCache(slug);
     return Results.Ok(new { tournament.Slug, podium = PodiumDto(setting, tournament.Teams) });
 });
 
@@ -449,6 +471,7 @@ app.MapPost("/api/admin/teams", async (
     };
     db.Teams.Add(team);
     await db.SaveChangesAsync();
+    InvalidateLeaderboardCache(tournament.Slug);
 
     var username = await BuildUniqueUsername(db, team.Name);
     var password = GenerateTeamPassword(team, await db.Teams.Where(item => item.TournamentId == tournament.Id).OrderBy(item => item.Id).ToListAsync(), pgaPasswordPool);
@@ -478,7 +501,7 @@ app.MapPut("/api/admin/teams/{teamId:int}", async (
         return Results.Unauthorized();
     }
 
-    var team = await db.Teams.FirstOrDefaultAsync(item => item.Id == teamId);
+    var team = await db.Teams.Include(item => item.Tournament).FirstOrDefaultAsync(item => item.Id == teamId);
     if (team is null)
     {
         return Results.NotFound();
@@ -489,6 +512,10 @@ app.MapPut("/api/admin/teams/{teamId:int}", async (
     team.Participants = NormalizeParticipants(request.Participants, request.JudgeName);
     team.UpdatedAt = DateTimeOffset.UtcNow;
     await db.SaveChangesAsync();
+    if (team.Tournament is not null)
+    {
+        InvalidateLeaderboardCache(team.Tournament.Slug);
+    }
     return Results.Ok(new { team.Id, team.Name, team.StartingHole, team.Participants });
 });
 
@@ -561,6 +588,7 @@ app.MapPut("/api/admin/tournaments/{slug}/team-count", async (
 
     tournament.UpdatedAt = DateTimeOffset.UtcNow;
     await db.SaveChangesAsync();
+    InvalidateLeaderboardCache(slug);
     return Results.Ok(new { tournament.Slug, count = request.Count });
 });
 
@@ -614,7 +642,7 @@ app.MapDelete("/api/admin/teams/{teamId:int}", async (int teamId, HttpContext ht
         return Results.Unauthorized();
     }
 
-    var team = await db.Teams.Include(item => item.Scores).Include(item => item.Users).FirstOrDefaultAsync(item => item.Id == teamId);
+    var team = await db.Teams.Include(item => item.Tournament).Include(item => item.Scores).Include(item => item.Users).FirstOrDefaultAsync(item => item.Id == teamId);
     if (team is null)
     {
         return Results.NotFound();
@@ -624,6 +652,10 @@ app.MapDelete("/api/admin/teams/{teamId:int}", async (int teamId, HttpContext ht
     db.Users.RemoveRange(team.Users);
     db.Teams.Remove(team);
     await db.SaveChangesAsync();
+    if (team.Tournament is not null)
+    {
+        InvalidateLeaderboardCache(team.Tournament.Slug);
+    }
     return Results.NoContent();
 });
 
@@ -998,6 +1030,13 @@ static object BuildLeaderboard(Tournament tournament)
     };
 }
 
+string NormalizeCacheKey(string slug) => slug.Trim().ToLowerInvariant();
+
+void InvalidateLeaderboardCache(string slug)
+{
+    leaderboardCache.TryRemove(NormalizeCacheKey(slug), out _);
+}
+
 static object PodiumDto(PodiumSetting setting, IEnumerable<Team> teams)
 {
     var teamById = teams.ToDictionary(item => item.Id, item => item.Name);
@@ -1290,6 +1329,7 @@ public sealed record LeaderboardRow(int TeamId, string TeamName, int TotalScore,
 {
     public int Position { get; init; }
 }
+public sealed record CachedLeaderboard(DateTimeOffset CachedAt, object Payload);
 public sealed record Actor(int UserId, string Username, string Role, int? TeamId)
 {
     public bool IsAdmin => Role.Equals("Admin", StringComparison.OrdinalIgnoreCase);
