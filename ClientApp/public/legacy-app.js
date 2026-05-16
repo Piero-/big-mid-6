@@ -1247,22 +1247,17 @@ async function downloadReportImage(mode = "week") {
   const reportLogo = await loadImage(LOGO_SRC);
 
   const scale = 2;
-  const size = 1600;
-  const width = size;
-  const outerPadding = 72;
-  const podiumTop = 236;
-  const podiumBottom = podiumTop + 570;
+  const width = 900;
+  const heroHeight = 474;
+  const titleBandHeight = 228;
+  const contentTop = heroHeight + titleBandHeight + 52;
+  const sidePadding = 90;
+  const rowHeight = 54;
+  const rowGap = 14;
   const otherTeams = sortedTeams.slice(3);
-  const otherGap = 12;
-  const otherWidth = width - outerPadding * 2;
-  const otherRows = otherTeams.length;
-  const otherHeight = 70;
-  const otherStartY = podiumBottom + (otherRows ? 80 : 42);
-  const footerGap = 86;
-  const contentBottom = otherRows
-    ? otherStartY + otherRows * otherHeight + Math.max(0, otherRows - 1) * otherGap
-    : podiumBottom;
-  const height = Math.max(size, contentBottom + footerGap);
+  const tableTop = contentTop + 382;
+  const contentBottom = tableTop + 36 + otherTeams.length * rowHeight + Math.max(0, otherTeams.length - 1) * rowGap;
+  const height = Math.max(1600, contentBottom + 88);
 
   const canvas = document.createElement("canvas");
   canvas.width = width * scale;
@@ -1270,60 +1265,31 @@ async function downloadReportImage(mode = "week") {
   const ctx = canvas.getContext("2d");
   ctx.scale(scale, scale);
 
-  const background = ctx.createLinearGradient(0, 0, width, height);
-  background.addColorStop(0, "#004f36");
-  background.addColorStop(0.56, "#006747");
+  const background = ctx.createLinearGradient(0, 0, 0, height);
+  background.addColorStop(0, "#00583d");
+  background.addColorStop(0.52, "#00724f");
   background.addColorStop(1, "#00563c");
   ctx.fillStyle = background;
   ctx.fillRect(0, 0, width, height);
 
-  ctx.fillStyle = "rgba(130, 77, 43, 0.28)";
-  ctx.beginPath();
-  ctx.arc(width - 140, 40, 290, 0, Math.PI * 2);
-  ctx.fill();
+  drawLeaderboardHero(ctx, width, heroHeight, reportLogo);
+  drawLeaderboardTitleBand(ctx, 0, heroHeight, width, titleBandHeight, activeReportWeek, isOverallReport);
 
-  drawRoundRect(ctx, outerPadding, 48, width - outerPadding * 2, 160, 28, "#f3ebd4");
-  drawReportLogo(ctx, outerPadding + 34, 72, 112, 96, reportLogo);
-  ctx.fillStyle = "#006747";
-  ctx.font = "900 44px Inter, Arial, sans-serif";
-  ctx.fillText(`Tour Virtual Banreservas - Categoría ${appState.activeCategory}`, outerPadding + 166, 108);
-  ctx.font = "900 27px Inter, Arial, sans-serif";
-  const reportTitle = isOverallReport ? "Reporte overall" : `Lugares ${weekDisplayName(activeWeek).toLowerCase()}`;
-  ctx.fillText(reportTitle, outerPadding + 166, 148);
-  ctx.fillStyle = "#824d2b";
-  ctx.font = "800 18px Inter, Arial, sans-serif";
-    const poolSource = isFinalsWeek(activeReportWeek)
-      ? `${inscriptionPaidCount()} inscripciones + ${paidCountForWeek(activeReportWeek)} pagos GRAN FINAL + donación`
-      : `${paidCountForWeek(activeReportWeek)} pagos semana`;
-    const payoutLine = `${poolSource} | ${formatDop(prizePool(activeReportWeek))} en bolsa | 1ro ${formatDop(
-      prizeForPlace(0, activeReportWeek),
-    )} | 2do ${formatDop(prizeForPlace(1, activeReportWeek))} | 3ro ${formatDop(prizeForPlace(2, activeReportWeek))}`;
-  ctx.fillText(truncateText(ctx, payoutLine, width - outerPadding * 2 - 190), outerPadding + 166, 176);
+  if (sortedTeams[0]) drawLeaderboardPodiumCard(ctx, 90, contentTop, 720, 164, sortedTeams[0], 1, "gold", mode);
+  if (sortedTeams[1]) drawLeaderboardPodiumCard(ctx, 92, contentTop + 188, 350, 164, sortedTeams[1], 2, "silver", mode);
+  if (sortedTeams[2]) drawLeaderboardPodiumCard(ctx, 458, contentTop + 188, 350, 164, sortedTeams[2], 3, "bronze", mode);
 
-  const first = sortedTeams[0];
-  const second = sortedTeams[1];
-  const third = sortedTeams[2];
-  if (first) drawPodiumCard(ctx, 250, podiumTop, 1100, 276, first, 1, "gold", mode);
-  if (second) drawPodiumCard(ctx, 128, podiumTop + 322, 644, 248, second, 2, "silver", mode);
-  if (third) drawPodiumCard(ctx, 828, podiumTop + 322, 644, 248, third, 3, "bronze", mode);
-
-  if (otherRows) {
-    drawReportRowHeader(ctx, outerPadding, otherStartY - 34, otherWidth, mode);
+  if (otherTeams.length) {
+    drawLeaderboardRowHeader(ctx, sidePadding, tableTop, width - sidePadding * 2, mode);
     otherTeams.forEach((team, index) => {
-      const y = otherStartY + index * (otherHeight + otherGap);
-      drawCompactReportRow(ctx, outerPadding, y, otherWidth, otherHeight, team, index + 4, mode);
+      const y = tableTop + 42 + index * (rowHeight + rowGap);
+      drawLeaderboardRow(ctx, sidePadding, y, width - sidePadding * 2, rowHeight, team, index + 4, mode);
     });
   }
 
   ctx.fillStyle = "rgba(243, 235, 212, 0.82)";
   ctx.font = "800 15px Inter, Arial, sans-serif";
-  ctx.fillText(
-    isOverallReport
-      ? "Reporte overall. Ordenado por puntos acumulados. Se muestra solo el dinero total ganado."
-      : "Reporte semanal. Ordenado por lugares de la semana. Se muestra dinero de la semana y dinero total.",
-    outerPadding,
-    height - 34,
-  );
+  ctx.fillText(isOverallReport ? "OVERALL" : weekDisplayName(activeWeek).toUpperCase(), sidePadding, height - 34);
 
     const imageUrl = canvas.toDataURL("image/png");
     const fileName = isOverallReport
@@ -1342,6 +1308,195 @@ async function downloadReportImage(mode = "week") {
     els.reportExport.hidden = false;
     els.reportExportStatus.textContent = `No se pudo generar el PNG con el logo: ${error.message || error}`;
   }
+}
+
+function drawLeaderboardHero(ctx, width, height, logo) {
+  ctx.save();
+  ctx.fillStyle = "#00543a";
+  ctx.fillRect(0, 0, width, height);
+  ctx.globalAlpha = 0.22;
+  drawTrophySilhouette(ctx, 210, 120, 260, 260);
+  drawGolfBall(ctx, 700, 8, 290);
+  ctx.globalAlpha = 1;
+
+  ctx.beginPath();
+  ctx.arc(width / 2, 164, 34, 0, Math.PI * 2);
+  ctx.fillStyle = "#f3ebd4";
+  ctx.fill();
+  drawReportLogo(ctx, width / 2 - 25, 139, 50, 50, logo);
+
+  ctx.fillStyle = "#f3ebd4";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
+  ctx.font = "900 78px Inter, Arial, sans-serif";
+  ctx.fillText("TOUR VIRTUAL", width / 2, 330);
+  ctx.font = "900 36px Inter, Arial, sans-serif";
+  ctx.fillText("BANRESERVAS", width / 2 + 120, 414);
+
+  ctx.strokeStyle = "rgba(243, 235, 212, 0.55)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(width / 2 - 6, 372);
+  ctx.lineTo(width / 2 - 6, 424);
+  ctx.stroke();
+
+  ctx.fillStyle = "rgba(243, 235, 212, 0.96)";
+  ctx.beginPath();
+  ctx.arc(width / 2 - 92, 400, 25, 0, Math.PI * 2);
+  ctx.arc(width / 2 - 54, 400, 25, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawLeaderboardTitleBand(ctx, x, y, width, height, week, isOverallReport) {
+  ctx.fillStyle = "#f3ebd4";
+  ctx.fillRect(x, y, width, height);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = "#00724f";
+  ctx.font = "900 34px Inter, Arial, sans-serif";
+  ctx.fillText(isOverallReport ? "OVERALL" : reportWeekHeadline(week), width / 2, y + 58);
+  ctx.font = "900 64px Inter, Arial, sans-serif";
+  ctx.fillText("LEADERBOARD", width / 2, y + 130);
+  ctx.font = "italic 900 42px Inter, Arial, sans-serif";
+  ctx.fillText(`CATEGORIA ${appState.activeCategory}`, width / 2, y + 190);
+}
+
+function reportWeekHeadline(week) {
+  if (isFinalsWeek(week)) return "GRAN FINAL";
+  const labels = { 1: "1RA", 2: "2DA", 3: "3RA", 4: "4TA", 5: "5TA", 6: "6TA", 7: "7MA", 8: "8VA", 9: "9NA", 10: "10MA", 11: "11VA" };
+  return `${labels[week.week] || `${week.week}TA`} JORNADA`;
+}
+
+function drawLeaderboardPodiumCard(ctx, x, y, width, height, team, reportPlace, tone, mode) {
+  const palette = {
+    gold: ["#fff4b8", "#d8a928", "#8f6500"],
+    silver: ["#f7f7f2", "#b8bec4", "#606873"],
+    bronze: ["#f0bf94", "#b66a35", "#6f3618"],
+  }[tone];
+  const gradient = ctx.createLinearGradient(x, y, x + width, y + height);
+  gradient.addColorStop(0, palette[0]);
+  gradient.addColorStop(1, palette[1]);
+  drawRoundRect(ctx, x, y, width, height, 16, gradient);
+  ctx.strokeStyle = palette[2];
+  ctx.lineWidth = 3;
+  strokeRoundRect(ctx, x, y, width, height, 16);
+
+  const large = reportPlace === 1;
+  const badgeSize = large ? 92 : 70;
+  const badgeX = x + (large ? 24 : 28);
+  const badgeY = y + (large ? 38 : 48);
+  const contentX = badgeX + badgeSize + 18;
+  const nameY = y + (large ? 82 : 72);
+
+  drawRoundRect(ctx, badgeX, badgeY, badgeSize, badgeSize, 10, "#00724f");
+  ctx.fillStyle = "#f3ebd4";
+  ctx.font = large ? "900 43px Inter, Arial, sans-serif" : "900 34px Inter, Arial, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(`#${reportPlace}`, badgeX + badgeSize / 2, badgeY + badgeSize / 2 + 2);
+
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = "#2d2d2d";
+  ctx.font = large ? "900 49px Inter, Arial, sans-serif" : "900 28px Inter, Arial, sans-serif";
+  ctx.fillText(truncateText(ctx, team.name.toUpperCase(), width - (contentX - x) - 24), contentX, nameY);
+
+  const pillY = y + (large ? 96 : 88);
+  drawLeaderboardPill(ctx, contentX, pillY, mode === "week" ? `SCORE: ${team.weekGolfScore || "TBD"}` : `OVERALL: ${placeLabel(team.overallPlace)}`);
+  drawLeaderboardPill(
+    ctx,
+    contentX + (large ? 198 : 0),
+    pillY + (large ? 0 : 36),
+    mode === "week" ? `PUNTOS: ${team.weekPoints.toLocaleString()}` : `PUNTOS: ${team.total.toLocaleString()}`,
+  );
+}
+
+function drawLeaderboardRowHeader(ctx, x, y, width, mode) {
+  ctx.fillStyle = "#f3ebd4";
+  ctx.font = "900 24px Inter, Arial, sans-serif";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillText(mode === "week" ? "SCORE" : "PUNTOS", x + width - 330, y + 24);
+  ctx.fillText(mode === "week" ? "PUNTOS" : "DINERO", x + width - 120, y + 24);
+}
+
+function drawLeaderboardRow(ctx, x, y, width, height, team, reportPlace, mode) {
+  drawRoundRect(ctx, x, y, width, height, 8, "#f3ebd4");
+  drawRoundRect(ctx, x + 20, y + 9, 52, height - 18, 8, "#00724f");
+  ctx.fillStyle = "#f3ebd4";
+  ctx.font = "900 23px Inter, Arial, sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(`#${reportPlace}`, x + 46, y + height / 2 + 1);
+
+  ctx.textAlign = "left";
+  ctx.fillStyle = "#2d2d2d";
+  ctx.font = "900 26px Inter, Arial, sans-serif";
+  ctx.fillText(truncateText(ctx, team.name.toUpperCase(), width - 410), x + 88, y + height / 2 + 1);
+
+  ctx.textAlign = "center";
+  ctx.font = "900 25px Inter, Arial, sans-serif";
+  ctx.fillText(mode === "week" ? team.weekGolfScore || "TBD" : team.total.toLocaleString(), x + width - 270, y + height / 2 + 1);
+  ctx.fillText(mode === "week" ? String(team.weekPoints.toLocaleString()) : compactDop(team.totalMoney), x + width - 86, y + height / 2 + 1);
+}
+
+function drawLeaderboardPill(ctx, x, y, text) {
+  ctx.font = "900 24px Inter, Arial, sans-serif";
+  const width = Math.max(136, ctx.measureText(text).width + 30);
+  drawRoundRect(ctx, x, y, width, 34, 9, "#f3ebd4");
+  ctx.fillStyle = "#00724f";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, x + width / 2, y + 18);
+}
+
+function compactDop(value) {
+  if (value >= 1000000) return `DOP ${(value / 1000000).toFixed(1)}M`;
+  if (value >= 1000) return `DOP ${Math.round(value / 1000)}K`;
+  return formatDop(value);
+}
+
+function drawGolfBall(ctx, x, y, radius) {
+  const gradient = ctx.createRadialGradient(x + radius * 0.32, y + radius * 0.28, 10, x + radius / 2, y + radius / 2, radius);
+  gradient.addColorStop(0, "rgba(243, 235, 212, 0.95)");
+  gradient.addColorStop(1, "rgba(243, 235, 212, 0.08)");
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.arc(x, y, radius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(243, 235, 212, 0.18)";
+  ctx.lineWidth = 2;
+  for (let row = -4; row <= 4; row += 1) {
+    for (let column = -4; column <= 4; column += 1) {
+      const dotX = x + column * 36 + (row % 2 ? 18 : 0);
+      const dotY = y + row * 28;
+      if ((dotX - x) ** 2 + (dotY - y) ** 2 < radius ** 2 * 0.72) {
+        ctx.beginPath();
+        ctx.arc(dotX, dotY, 12, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+  }
+}
+
+function drawTrophySilhouette(ctx, x, y, width, height) {
+  ctx.fillStyle = "rgba(243, 235, 212, 0.72)";
+  drawRoundRect(ctx, x + width * 0.35, y + height * 0.08, width * 0.3, height * 0.62, 28, ctx.fillStyle);
+  ctx.beginPath();
+  ctx.ellipse(x + width * 0.5, y + height * 0.16, width * 0.28, height * 0.07, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(243, 235, 212, 0.58)";
+  ctx.lineWidth = 14;
+  ctx.beginPath();
+  ctx.arc(x + width * 0.33, y + height * 0.27, width * 0.24, Math.PI * 0.55, Math.PI * 1.5);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(x + width * 0.67, y + height * 0.27, width * 0.24, Math.PI * 1.5, Math.PI * 0.45);
+  ctx.stroke();
+  ctx.fillStyle = "rgba(243, 235, 212, 0.48)";
+  drawRoundRect(ctx, x + width * 0.43, y + height * 0.68, width * 0.14, height * 0.16, 8, ctx.fillStyle);
+  drawRoundRect(ctx, x + width * 0.3, y + height * 0.84, width * 0.4, height * 0.08, 10, ctx.fillStyle);
 }
 
 function drawPodiumCard(ctx, x, y, width, height, team, reportPlace, tone, mode) {
