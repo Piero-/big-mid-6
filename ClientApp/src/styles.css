@@ -254,6 +254,217 @@ a { color: inherit; text-decoration: none; }
 }
 .dashboard-grid { grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr); }
 .dashboard-grid.leaderboard-only { grid-template-columns: 1fr; }
+
+.countdown-only-view {
+  width: 100%;
+  max-width: none;
+  min-height: 100svh;
+  display: grid;
+  align-items: stretch;
+  margin: 0;
+  padding: 0;
+}
+
+.countdown-only-view .countdown-card {
+  width: 100vw;
+  min-height: 100svh;
+  grid-template-rows: minmax(112px, 0.68fr) auto auto;
+  align-content: center;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.countdown-only-view .countdown-brand {
+  min-height: 0;
+  align-self: end;
+}
+
+.countdown-only-view .countdown-brand img {
+  width: min(36vw, 430px);
+  max-height: 170px;
+}
+
+.countdown-only-view .countdown-copy {
+  align-self: center;
+}
+
+.countdown-only-view .countdown-copy p {
+  font-size: clamp(0.84rem, 1vw, 1rem);
+}
+
+.countdown-only-view .countdown-grid {
+  width: min(1120px, 92vw);
+  margin-inline: auto;
+}
+
+.countdown-only-view .countdown-unit {
+  padding: clamp(22px, 3vw, 38px) 18px;
+}
+
+.countdown-only-view .countdown-unit strong {
+  font-size: clamp(4.4rem, 10vw, 10rem);
+}
+
+.countdown-only-view .countdown-unit span {
+  font-size: clamp(0.82rem, 1vw, 1rem);
+}
+
+.countdown-only-view .countdown-info {
+  width: min(980px, 86vw);
+  margin-inline: auto;
+  align-self: start;
+  margin-top: clamp(8px, 1.6vw, 18px);
+}
+
+.countdown-only-view .info-pill {
+  padding: clamp(18px, 2vw, 28px);
+}
+
+.countdown-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 28px;
+  min-height: 520px;
+  padding: clamp(22px, 4vw, 44px);
+  border: 1px solid rgba(240, 196, 25, 0.32);
+  border-radius: 8px;
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, rgba(8, 26, 54, 0.94), rgba(13, 43, 85, 0.78)),
+    radial-gradient(circle at 74% 24%, rgba(240, 196, 25, 0.18), transparent 28rem);
+}
+
+.countdown-card::before {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(240, 196, 25, 0.92) 0 5px, transparent 5px),
+    linear-gradient(180deg, rgba(255,255,255,0.08), transparent 38%);
+  content: "";
+}
+
+.countdown-brand,
+.countdown-copy,
+.countdown-info {
+  position: relative;
+  z-index: 1;
+}
+
+.countdown-brand {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 96px;
+}
+
+.countdown-brand img {
+  width: min(100%, 320px);
+  max-height: 128px;
+  object-fit: contain;
+  object-position: center;
+}
+
+.countdown-brand span,
+.countdown-copy p,
+.info-pill span {
+  color: var(--gold);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.countdown-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+}
+
+.countdown-copy p {
+  margin: 0 0 12px;
+}
+
+.countdown-copy h2 {
+  margin: 0;
+  font-size: clamp(2.5rem, 7vw, 6.4rem);
+  line-height: 0.92;
+  text-transform: uppercase;
+}
+
+.countdown-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(96px, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.countdown-unit {
+  min-width: 0;
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 8px;
+  padding: 18px 14px;
+  background: rgba(255,255,255,0.08);
+  text-align: center;
+}
+
+.countdown-unit strong {
+  display: block;
+  color: #fff;
+  font-size: clamp(2.2rem, 5vw, 4.6rem);
+  line-height: 0.92;
+}
+
+.countdown-unit span {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.countdown-info {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.info-pill {
+  min-width: 0;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  padding: 20px;
+  background: rgba(255,255,255,0.06);
+  text-align: center;
+}
+
+.info-pill strong {
+  display: block;
+  margin-top: 6px;
+  color: #fff;
+  font-size: clamp(1.05rem, 2vw, 1.65rem);
+  line-height: 1.25;
+}
+
+.tv-countdown {
+  min-height: calc(100vh - 180px);
+  align-content: center;
+}
+
+.tv-countdown .countdown-brand img {
+  width: min(100%, 420px);
+  max-height: 180px;
+}
+
+.tv-countdown .countdown-copy h2 {
+  font-size: clamp(4.5rem, 8vw, 9rem);
+}
 .scoring-grid { grid-template-columns: minmax(0, 1.1fr) minmax(360px, 0.9fr); }
 .admin-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .admin-grid {
@@ -745,6 +956,110 @@ th {
 .compact-table .leader-participants {
   max-width: 420px;
   font-size: 0.78rem;
+}
+.leaderboard-row {
+  cursor: pointer;
+}
+.leaderboard-row:focus-visible td,
+.leaderboard-row:hover td,
+.leaderboard-row.is-expanded td {
+  background: rgba(255, 255, 255, 0.045);
+}
+.score-detail-row td {
+  padding: 0;
+  background:
+    linear-gradient(180deg, rgba(240, 196, 25, 0.07), transparent),
+    rgba(255, 255, 255, 0.025);
+  white-space: normal;
+}
+.hole-score-grid {
+  display: grid;
+  grid-template-columns: repeat(9, minmax(64px, 1fr));
+  gap: 10px;
+  padding: 14px;
+}
+.hole-score-cell {
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  min-height: 76px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(5, 14, 28, 0.36);
+  padding: 10px 8px;
+}
+.hole-score-cell.is-pending {
+  opacity: 0.56;
+}
+.hole-score-cell span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+.hole-score-cell small {
+  font: inherit;
+}
+.score-mark {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 950;
+  line-height: 1;
+}
+.score-mark.pending {
+  color: var(--muted);
+  font-weight: 900;
+}
+.score-mark.circle,
+.score-mark.double-circle {
+  border: 2px solid #33c17d;
+  border-radius: 999px;
+}
+.score-mark.double-circle::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border: 2px solid #33c17d;
+  border-radius: inherit;
+}
+.score-mark.square,
+.score-mark.double-square {
+  border: 2px solid #ef6b64;
+  border-radius: 5px;
+}
+.score-mark.double-square::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border: 2px solid #ef6b64;
+  border-radius: 7px;
+}
+.score-mark.triangle {
+  width: 38px;
+  height: 34px;
+  color: var(--ink);
+  isolation: isolate;
+}
+.score-mark.triangle::before {
+  content: "";
+  position: absolute;
+  inset: -6px -8px -4px;
+  background: #53b8ff;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  z-index: -2;
+}
+.score-mark.triangle::after {
+  content: "";
+  position: absolute;
+  inset: -2px -3px 1px;
+  background: var(--panel);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  z-index: -1;
 }
 tbody tr.score-flash td {
   animation: score-row-flash 300ms ease-out;
@@ -1854,10 +2169,29 @@ tbody tr.position-up td:last-child {
 .tv-mode tbody tr {
   min-height: 92px;
 }
+.tv-mode .score-detail-row td {
+  width: auto;
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 800;
+}
+.tv-mode .hole-score-grid {
+  grid-template-columns: repeat(9, minmax(92px, 1fr));
+  gap: 16px;
+  padding: 20px;
+}
+.tv-mode .score-mark {
+  width: 48px;
+  height: 48px;
+  font-size: 1.35rem;
+}
 
 @media (max-width: 1080px) {
   .dashboard-grid, .scoring-grid, .admin-grid, .hero {
     grid-template-columns: 1fr;
+  }
+  .countdown-info {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .hero-logo {
     width: min(280px, 100%);
@@ -2014,6 +2348,37 @@ tbody tr.position-up td:last-child {
     width: min(100% - 14px, 1440px);
     padding-top: 12px;
   }
+  .countdown-only-view {
+    width: 100%;
+    min-height: auto;
+    padding: 0;
+    overflow: visible;
+  }
+  .countdown-only-view .countdown-card {
+    grid-template-rows: auto auto auto;
+    align-content: center;
+    gap: 8px;
+  }
+  .countdown-only-view .countdown-brand {
+    align-self: end;
+  }
+  .countdown-only-view .countdown-brand img {
+    width: min(52vw, 205px);
+    max-height: 78px;
+  }
+  .countdown-only-view .countdown-grid,
+  .countdown-only-view .countdown-info {
+    width: 100%;
+  }
+  .countdown-only-view .countdown-info {
+    margin-top: 6px;
+  }
+  .countdown-only-view .countdown-unit {
+    padding: clamp(16px, 5vw, 24px) 10px;
+  }
+  .countdown-only-view .countdown-unit strong {
+    font-size: clamp(3rem, 17vw, 4.6rem);
+  }
   html:has(.score-panel) {
     scroll-snap-type: y proximity;
   }
@@ -2059,8 +2424,113 @@ tbody tr.position-up td:last-child {
   .leader-participants {
     display: none;
   }
+  .score-detail-row td {
+    background: rgba(255, 255, 255, 0.018);
+  }
+  .hole-score-grid {
+    grid-template-columns: repeat(6, minmax(38px, 1fr));
+    gap: 6px;
+    padding: 10px 8px 12px;
+  }
+  .hole-score-cell {
+    min-height: 48px;
+    gap: 4px;
+    border: 0;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.035);
+    padding: 6px 3px;
+  }
+  .hole-score-cell span {
+    font-size: 0.62rem;
+    line-height: 1;
+  }
+  .hole-score-cell small {
+    display: none;
+  }
+  .score-mark {
+    width: 25px;
+    height: 25px;
+    font-size: 0.82rem;
+    border-width: 1.5px;
+  }
+  .score-mark.double-circle::after,
+  .score-mark.double-square::after {
+    inset: -4px;
+    border-width: 1.5px;
+  }
+  .score-mark.triangle {
+    width: 29px;
+    height: 25px;
+  }
+  .score-mark.triangle::before {
+    inset: -4px -5px -3px;
+  }
+  .score-mark.triangle::after {
+    inset: -1px -2px 1px;
+  }
   .share-button {
     width: 100%;
+  }
+  .countdown-card {
+    min-height: 100svh;
+    height: auto;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    overflow: visible;
+    padding: max(16px, env(safe-area-inset-top)) 18px max(16px, env(safe-area-inset-bottom));
+    align-content: center;
+    background:
+      radial-gradient(circle at 50% 10%, rgba(240, 196, 25, 0.12), transparent 15rem),
+      linear-gradient(180deg, rgba(8, 27, 55, 0.98), rgba(5, 18, 37, 0.98));
+  }
+  .countdown-card::before {
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.07), transparent 28%),
+      radial-gradient(circle at 50% 92%, rgba(240, 196, 25, 0.1), transparent 14rem);
+  }
+  .countdown-brand {
+    min-height: 58px;
+  }
+  .countdown-brand img {
+    max-width: 210px;
+    max-height: 82px;
+  }
+  .countdown-copy h2 {
+    font-size: clamp(2.35rem, 13vw, 4rem);
+  }
+  .countdown-copy p {
+    font-size: 0.72rem;
+    opacity: 0.88;
+    margin-bottom: 6px;
+  }
+  .countdown-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .countdown-grid .countdown-unit:nth-child(n + 3) {
+    display: none;
+  }
+  .countdown-unit {
+    border-color: rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.045);
+    padding: 16px 12px;
+  }
+  .countdown-unit strong {
+    font-size: clamp(2.35rem, 16vw, 4.1rem);
+  }
+  .countdown-info {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .info-pill {
+    border-color: rgba(255,255,255,0.08);
+    background: transparent;
+    padding: 8px 4px;
+  }
+  .info-pill strong {
+    font-size: clamp(1.1rem, 5.5vw, 1.55rem);
   }
   .tv-toggle-button {
     display: none;

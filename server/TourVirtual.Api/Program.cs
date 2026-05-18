@@ -437,6 +437,7 @@ app.MapPut("/api/admin/tournaments/{slug}/podium", async (
     setting.FirstPrize = request.FirstPrize;
     setting.SecondPrize = request.SecondPrize;
     setting.ThirdPrize = request.ThirdPrize;
+    setting.IsPublished = request.IsPublished && IsCompletePodium(setting);
     setting.UpdatedAt = DateTimeOffset.UtcNow;
     tournament.UpdatedAt = setting.UpdatedAt;
     await db.SaveChangesAsync();
@@ -818,10 +819,12 @@ static async Task EnsureRuntimeSchema(AppDbContext db)
                 "FirstPrize" TEXT NOT NULL DEFAULT '0',
                 "SecondPrize" TEXT NOT NULL DEFAULT '0',
                 "ThirdPrize" TEXT NOT NULL DEFAULT '0',
+                "IsPublished" INTEGER NOT NULL DEFAULT 0,
                 "UpdatedAt" TEXT NOT NULL,
                 CONSTRAINT "FK_PodiumSettings_Tournaments_TournamentId" FOREIGN KEY ("TournamentId") REFERENCES "Tournaments" ("Id") ON DELETE CASCADE
             );
             """);
+        await TryExecuteSqlAsync(db, """ALTER TABLE "PodiumSettings" ADD COLUMN "IsPublished" INTEGER NOT NULL DEFAULT 0;""");
         await db.Database.ExecuteSqlRawAsync("""
             CREATE UNIQUE INDEX IF NOT EXISTS "IX_PodiumSettings_TournamentId"
             ON "PodiumSettings" ("TournamentId");
@@ -839,6 +842,7 @@ static async Task EnsureRuntimeSchema(AppDbContext db)
                 "FirstPrize" numeric(12,2) NOT NULL DEFAULT 0,
                 "SecondPrize" numeric(12,2) NOT NULL DEFAULT 0,
                 "ThirdPrize" numeric(12,2) NOT NULL DEFAULT 0,
+                "IsPublished" boolean NOT NULL DEFAULT false,
                 "UpdatedAt" timestamp with time zone NOT NULL,
                 CONSTRAINT "PK_PodiumSettings" PRIMARY KEY ("Id"),
                 CONSTRAINT "FK_PodiumSettings_Tournaments_TournamentId" FOREIGN KEY ("TournamentId") REFERENCES "Tournaments" ("Id") ON DELETE CASCADE
@@ -846,6 +850,19 @@ static async Task EnsureRuntimeSchema(AppDbContext db)
             CREATE UNIQUE INDEX IF NOT EXISTS "IX_PodiumSettings_TournamentId"
             ON "PodiumSettings" ("TournamentId");
             """);
+        await db.Database.ExecuteSqlRawAsync("""ALTER TABLE "PodiumSettings" ADD COLUMN IF NOT EXISTS "IsPublished" boolean NOT NULL DEFAULT false;""");
+    }
+}
+
+static async Task TryExecuteSqlAsync(AppDbContext db, string sql)
+{
+    try
+    {
+        await db.Database.ExecuteSqlRawAsync(sql);
+    }
+    catch
+    {
+        // SQLite cannot add an existing column; the runtime schema is already compatible.
     }
 }
 
@@ -1009,6 +1026,22 @@ static object BuildLeaderboard(Tournament tournament)
             row.TeamId,
             row.TeamName,
             participants = ParticipantNames(tournament.Teams.FirstOrDefault(team => team.Id == row.TeamId)?.Participants ?? string.Empty),
+            scores = tournament.Teams
+                .FirstOrDefault(team => team.Id == row.TeamId)?
+                .Scores
+                .OrderBy(score => score.HoleNumber)
+                .Select(score => new
+                {
+                    score.HoleNumber,
+                    score.GrossScore,
+                    par = parByHole.GetValueOrDefault(score.HoleNumber, 0),
+                    relativeToPar = score.GrossScore - parByHole.GetValueOrDefault(score.HoleNumber, 0)
+                }) ?? [],
+            holes = tournament.Holes.OrderBy(hole => hole.Number).Select(hole => new
+            {
+                hole.Number,
+                hole.Par
+            }),
             row.TotalScore,
             row.RelativeToPar,
             scoreLabel = FormatRelativeScore(row.RelativeToPar),
@@ -1022,7 +1055,7 @@ static object BuildLeaderboard(Tournament tournament)
     return new
     {
         tournament = TournamentSummary(tournament),
-        podium = tournament.PodiumSetting is null || !IsCompletePodium(tournament.PodiumSetting)
+        podium = tournament.PodiumSetting is null || !tournament.PodiumSetting.IsPublished || !IsCompletePodium(tournament.PodiumSetting)
             ? null
             : PodiumDto(tournament.PodiumSetting, tournament.Teams),
         rows = rankedRows,
@@ -1045,6 +1078,7 @@ static object PodiumDto(PodiumSetting setting, IEnumerable<Team> teams)
         first = PodiumPlaceDto(setting.FirstTeamId, setting.FirstPrize, teamById),
         second = PodiumPlaceDto(setting.SecondTeamId, setting.SecondPrize, teamById),
         third = PodiumPlaceDto(setting.ThirdTeamId, setting.ThirdPrize, teamById),
+        setting.IsPublished,
         setting.UpdatedAt
     };
 }
@@ -1320,7 +1354,7 @@ public sealed record ScoreRequest(int GrossScore, bool Confirmed);
 public sealed record TournamentStatusRequest(string Status, bool IsClosed);
 public sealed record AdminTournamentRequest(string Name, string CourseName, DateTimeOffset StartsAt, string Format, string StartMode, string Status, bool IsClosed, string Theme, HoleRequest[] Holes);
 public sealed record HoleRequest(int Number, int Par);
-public sealed record PodiumRequest(int? FirstTeamId, int? SecondTeamId, int? ThirdTeamId, decimal FirstPrize, decimal SecondPrize, decimal ThirdPrize);
+public sealed record PodiumRequest(int? FirstTeamId, int? SecondTeamId, int? ThirdTeamId, decimal FirstPrize, decimal SecondPrize, decimal ThirdPrize, bool IsPublished = false);
 public sealed record AdminTeamRequest(string TournamentSlug, string Name, int StartingHole, string[] Participants, string? JudgeName);
 public sealed record AdminTeamUpdateRequest(string Name, int StartingHole, string[] Participants, string? JudgeName);
 public sealed record TeamCountRequest(int Count);

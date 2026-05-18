@@ -29,6 +29,7 @@ public sealed class PodiumSetting
     public decimal FirstPrize { get; set; }
     public decimal SecondPrize { get; set; }
     public decimal ThirdPrize { get; set; }
+    public bool IsPublished { get; set; }
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 

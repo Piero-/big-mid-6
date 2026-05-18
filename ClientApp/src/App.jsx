@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
 const SLUGS = [
@@ -66,6 +66,7 @@ function PublicApp() {
   const [loading, setLoading] = useState(true);
   const [isTv, setIsTv] = useState(false);
   const [copyMessage, setCopyMessage] = useState("");
+  const [now, setNow] = useState(Date.now());
   const online = useOnlineStatus();
 
   useEffect(() => {
@@ -86,9 +87,15 @@ function PublicApp() {
     };
   }, [slug]);
 
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   const activeLogo = SLUGS.find((item) => item.slug === slug)?.logo;
   const activeLabel = SLUGS.find((item) => item.slug === slug)?.label || "BIG 6";
   const sharePath = `${window.location.origin}/leaderboard/${slug}`;
+  const showCountdown = shouldShowCountdown(leaderboard?.tournament, now);
 
   useEffect(() => {
     setPageTitle(slug, isTv ? "Modo TV" : "Leaderboard");
@@ -114,6 +121,14 @@ function PublicApp() {
     }
   }
 
+  if (!loading && showCountdown) {
+    return (
+      <main className="app public-view countdown-only-view">
+        <CountdownCard tournament={leaderboard?.tournament} logo={activeLogo} label={activeLabel} now={now} />
+      </main>
+    );
+  }
+
   if (isTv) {
     return (
       <main className="app public-view tv-mode">
@@ -132,14 +147,16 @@ function PublicApp() {
         <section className="tv-stage">
           <header className="tv-stage-header">
             <div>
-              <span>Leaderboard en vivo</span>
-              <h1>Leaderboard</h1>
+              <span>{showCountdown ? "Antes de iniciar" : "Leaderboard en vivo"}</span>
+              <h1>{showCountdown ? "Cuenta regresiva" : "Leaderboard"}</h1>
             </div>
             <strong>{translateStatus(leaderboard?.tournament?.status)}</strong>
           </header>
           <div className="tv-board">
             {loading ? (
               <LeaderboardSkeleton />
+            ) : showCountdown ? (
+              <CountdownCard tournament={leaderboard?.tournament} logo={activeLogo} label={activeLabel} now={now} tv />
             ) : (
               <>
                 <PodiumDisplay podium={leaderboard?.podium} />
@@ -174,9 +191,11 @@ function PublicApp() {
         </div>
       </section>
       <section className="dashboard-grid leaderboard-only">
-        <Panel title="Leaderboard" kicker={leaderboard?.tournament?.name || "Torneo"}>
+        <Panel title={showCountdown ? "Cuenta regresiva" : "Leaderboard"} kicker={leaderboard?.tournament?.name || "Torneo"}>
           {loading ? (
             <LeaderboardSkeleton />
+          ) : showCountdown ? (
+            <CountdownCard tournament={leaderboard?.tournament} logo={activeLogo} label={activeLabel} now={now} />
           ) : (
             <>
               <PodiumDisplay podium={leaderboard?.podium} />
@@ -402,7 +421,7 @@ function AdminApp() {
   const [detail, setDetail] = useState(null);
   const [leaderboard, setLeaderboard] = useState(null);
   const [tournamentDraft, setTournamentDraft] = useState(null);
-  const [podiumDraft, setPodiumDraft] = useState({ firstTeamId: "", secondTeamId: "", thirdTeamId: "", firstPrize: 0, secondPrize: 0, thirdPrize: 0 });
+  const [podiumDraft, setPodiumDraft] = useState({ firstTeamId: "", secondTeamId: "", thirdTeamId: "", firstPrize: 0, secondPrize: 0, thirdPrize: 0, isPublished: false });
   const [message, setMessage] = useState("");
   const [resetScoresStep, setResetScoresStep] = useState(0);
   const [resettingScores, setResettingScores] = useState(false);
@@ -464,6 +483,7 @@ function AdminApp() {
       firstPrize: detail.podium?.first?.prize || 0,
       secondPrize: detail.podium?.second?.prize || 0,
       thirdPrize: detail.podium?.third?.prize || 0,
+      isPublished: Boolean(detail.podium?.isPublished),
     });
   }, [detail]);
 
@@ -548,21 +568,41 @@ function AdminApp() {
     }
   }
 
+  function buildPodiumPayload(nextPublished = podiumDraft.isPublished) {
+    return {
+      firstTeamId: podiumDraft.firstTeamId ? Number(podiumDraft.firstTeamId) : null,
+      secondTeamId: podiumDraft.secondTeamId ? Number(podiumDraft.secondTeamId) : null,
+      thirdTeamId: podiumDraft.thirdTeamId ? Number(podiumDraft.thirdTeamId) : null,
+      firstPrize: Number(podiumDraft.firstPrize) || 0,
+      secondPrize: Number(podiumDraft.secondPrize) || 0,
+      thirdPrize: Number(podiumDraft.thirdPrize) || 0,
+      isPublished: Boolean(nextPublished),
+    };
+  }
+
   async function savePodium(event) {
     event.preventDefault();
     await api(`/api/admin/tournaments/${slug}/podium`, {
       method: "PUT",
       token: session.token,
-      body: {
-        firstTeamId: podiumDraft.firstTeamId ? Number(podiumDraft.firstTeamId) : null,
-        secondTeamId: podiumDraft.secondTeamId ? Number(podiumDraft.secondTeamId) : null,
-        thirdTeamId: podiumDraft.thirdTeamId ? Number(podiumDraft.thirdTeamId) : null,
-        firstPrize: Number(podiumDraft.firstPrize) || 0,
-        secondPrize: Number(podiumDraft.secondPrize) || 0,
-        thirdPrize: Number(podiumDraft.thirdPrize) || 0,
-      },
+      body: buildPodiumPayload(),
     });
     setMessage("Podio guardado.");
+    refreshAdmin(slug, session.token, setDetail, setLeaderboard);
+  }
+
+  async function publishPodium(nextPublished) {
+    if (nextPublished && (!podiumDraft.firstTeamId || !podiumDraft.secondTeamId || !podiumDraft.thirdTeamId)) {
+      setMessage("Completa primero, segundo y tercero antes de publicar.");
+      return;
+    }
+    await api(`/api/admin/tournaments/${slug}/podium`, {
+      method: "PUT",
+      token: session.token,
+      body: buildPodiumPayload(nextPublished),
+    });
+    setPodiumDraft({ ...podiumDraft, isPublished: nextPublished });
+    setMessage(nextPublished ? "Ganadores publicados." : "Ganadores ocultos.");
     refreshAdmin(slug, session.token, setDetail, setLeaderboard);
   }
 
@@ -577,9 +617,10 @@ function AdminApp() {
         firstPrize: 0,
         secondPrize: 0,
         thirdPrize: 0,
+        isPublished: false,
       },
     });
-    setPodiumDraft({ firstTeamId: "", secondTeamId: "", thirdTeamId: "", firstPrize: 0, secondPrize: 0, thirdPrize: 0 });
+    setPodiumDraft({ firstTeamId: "", secondTeamId: "", thirdTeamId: "", firstPrize: 0, secondPrize: 0, thirdPrize: 0, isPublished: false });
     setMessage("Podio limpiado.");
     refreshAdmin(slug, session.token, setDetail, setLeaderboard);
   }
@@ -764,8 +805,18 @@ function AdminApp() {
             </div>
             <div className="toolbar-actions wrap">
               <button className="button primary" type="submit">Guardar podio</button>
+              <button
+                className={`button ${podiumDraft.isPublished ? "subtle" : "primary"}`}
+                type="button"
+                onClick={() => publishPodium(!podiumDraft.isPublished)}
+              >
+                {podiumDraft.isPublished ? "Ocultar ganadores" : "Publicar ganadores"}
+              </button>
               <button className="button subtle" type="button" onClick={clearPodium}>Limpiar podio</button>
             </div>
+            <p className="muted small">
+              {podiumDraft.isPublished ? "El podio esta visible en la vista publica." : "El podio esta oculto hasta publicar ganadores."}
+            </p>
           </form>
         </Panel>
         <Panel title="Equipos" kicker={`${detail?.teams?.length || 0} de 22 espacios`} className="teams-panel">
@@ -1429,6 +1480,7 @@ function LeaderboardTable({ data, compact = false, animateChanges = false }) {
   const previousRows = useRef(new Map());
   const [flashRows, setFlashRows] = useState(new Set());
   const [positionUpRows, setPositionUpRows] = useState(new Set());
+  const [expandedRows, setExpandedRows] = useState(new Set());
 
   useEffect(() => {
     if (rows.length === 0) {
@@ -1464,6 +1516,18 @@ function LeaderboardTable({ data, compact = false, animateChanges = false }) {
     return () => timers.forEach((timer) => window.clearTimeout(timer));
   }, [animateChanges, rows]);
 
+  function toggleExpanded(teamId) {
+    setExpandedRows((current) => {
+      const next = new Set(current);
+      if (next.has(teamId)) {
+        next.delete(teamId);
+      } else {
+        next.add(teamId);
+      }
+      return next;
+    });
+  }
+
   return (
     <div className="table-wrap">
       <table className={compact ? "compact-table" : ""}>
@@ -1480,12 +1544,27 @@ function LeaderboardTable({ data, compact = false, animateChanges = false }) {
         <tbody>
           {rows.map((row) => {
             const rowClasses = [
+              "leaderboard-row",
               flashRows.has(row.teamId) ? "score-flash" : "",
               positionUpRows.has(row.teamId) ? "position-up" : "",
+              expandedRows.has(row.teamId) ? "is-expanded" : "",
             ].filter(Boolean).join(" ");
 
             return (
-            <tr className={rowClasses} key={row.teamId}>
+              <Fragment key={row.teamId}>
+            <tr
+              className={rowClasses}
+              onClick={() => toggleExpanded(row.teamId)}
+              tabIndex={0}
+              role="button"
+              aria-expanded={expandedRows.has(row.teamId)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  toggleExpanded(row.teamId);
+                }
+              }}
+            >
               <td>{row.displayPosition ?? (row.holesCompleted > 0 ? (row.tied ? `T${row.position}` : row.position) : "")}</td>
               <td>
                 <strong className="leader-team-name">{row.teamName}</strong>
@@ -1498,10 +1577,93 @@ function LeaderboardTable({ data, compact = false, animateChanges = false }) {
               <td>{row.holesCompleted}</td>
               <td>{row.currentHole}</td>
             </tr>
+            {expandedRows.has(row.teamId) && (
+              <tr className="score-detail-row">
+                <td colSpan={6}>
+                  <TeamHoleScores holes={row.holes || []} scores={row.scores || []} />
+                </td>
+              </tr>
+            )}
+              </Fragment>
           );
           })}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function TeamHoleScores({ holes, scores }) {
+  const scoreByHole = new Map(scores.map((score) => [score.holeNumber, score]));
+  const displayHoles = holes.length > 0
+    ? holes
+    : Array.from({ length: 18 }, (_, index) => ({ number: index + 1, par: 0 }));
+
+  return (
+    <div className="hole-score-grid" aria-label="Scores por hoyo">
+      {displayHoles.map((hole) => {
+        const score = scoreByHole.get(hole.number);
+        return (
+        <div className={`hole-score-cell ${score ? "" : "is-pending"}`.trim()} key={hole.number}>
+          <span><small>Hoyo</small> {hole.number}</span>
+          <strong className={score ? scoreMarkClass(score) : "score-mark pending"}>{score?.grossScore || "-"}</strong>
+        </div>
+      );
+      })}
+    </div>
+  );
+}
+
+function scoreMarkClass(score) {
+  const relative = Number(score.relativeToPar);
+  const grossScore = Number(score.grossScore);
+  if (grossScore === 1) return "score-mark double-circle";
+  if (relative <= -3) return "score-mark triangle";
+  if (relative === -2) return "score-mark double-circle";
+  if (relative === -1) return "score-mark circle";
+  if (relative === 1) return "score-mark square";
+  if (relative >= 2) return "score-mark double-square";
+  return "score-mark";
+}
+
+function CountdownCard({ tournament, logo, label, now, tv = false }) {
+  const countdown = getCountdownParts(tournament?.startsAt, now);
+  return (
+    <section className={`countdown-card ${tv ? "tv-countdown" : ""}`}>
+      <div className="countdown-brand">
+        {logo && <img src={logo} alt={label} />}
+      </div>
+      <div className="countdown-copy">
+        <p>El torneo empieza en</p>
+        <div className="countdown-grid" aria-label="Cuenta regresiva">
+          <CountdownUnit value={countdown.days} label="Dias" />
+          <CountdownUnit value={countdown.hours} label="Horas" />
+          <CountdownUnit value={countdown.minutes} label="Min" />
+          <CountdownUnit value={countdown.seconds} label="Seg" />
+        </div>
+      </div>
+      <div className="countdown-info">
+        <InfoPill label="Campo" value={tournament?.courseName || "Por definir"} />
+        <InfoPill label="Fecha y hora" value={formatDate(tournament?.startsAt)} />
+      </div>
+    </section>
+  );
+}
+
+function CountdownUnit({ value, label }) {
+  return (
+    <div className="countdown-unit">
+      <strong>{String(value).padStart(2, "0")}</strong>
+      <span>{label}</span>
+    </div>
+  );
+}
+
+function InfoPill({ label, value }) {
+  return (
+    <div className="info-pill">
+      <span>{label}</span>
+      <strong>{value}</strong>
     </div>
   );
 }
@@ -1720,6 +1882,32 @@ function translateStatus(status) {
     paused: "Torneo pausado",
     finished: "Torneo finalizado",
   }[status] || "Sin estado";
+}
+
+function translateStartMode(startMode) {
+  return {
+    shotgun: "Shotgun",
+    tee_time: "Tee time",
+    "tee-time": "Tee time",
+  }[startMode] || startMode || "Por definir";
+}
+
+function shouldShowCountdown(tournament, now = Date.now()) {
+  if (!tournament) return false;
+  if (tournament.status === "active" || tournament.status === "finished") return false;
+  const startsAt = tournament.startsAt ? new Date(tournament.startsAt).getTime() : 0;
+  return tournament.status === "upcoming" || (Number.isFinite(startsAt) && startsAt > now);
+}
+
+function getCountdownParts(startsAt, now = Date.now()) {
+  const target = startsAt ? new Date(startsAt).getTime() : now;
+  const remaining = Math.max(0, target - now);
+  const totalSeconds = Math.floor(remaining / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return { days, hours, minutes, seconds };
 }
 
 function scoreLabel(score) {
