@@ -552,13 +552,15 @@ function AdminApp() {
       });
       setMessage(`Equipo ${team.name} guardado.`);
       await refreshAdmin(slug, session.token, setDetail, setLeaderboard);
+      return true;
     } catch (error) {
       if (error.status === 401) {
         setSession(null);
         setMessage("Sesion expirada. Entra de nuevo para guardar cambios.");
-        return;
+        return false;
       }
       setMessage(error.message || "No pudimos guardar el equipo.");
+      return false;
     } finally {
       setSavingTeams((current) => {
         const next = new Set(current);
@@ -861,26 +863,44 @@ function EventoSalidasAdmin({ detail, onBack, onSave, savingTeams, slug }) {
   const assignedTeams = teams.filter(isTeamAssignedForStartingEvent);
   const allAssigned = teams.length >= 22 && assignedTeams.length >= 22;
   const logo = slug === "mid-6" ? "/assets/mid6-amarillo.png" : "/assets/big6-amarillo.png";
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [carouselDirection, setCarouselDirection] = useState("next");
+  const [stateBySlug, setStateBySlug] = useState({});
+  const eventState = stateBySlug[slug] || { activeIndex: 0, carouselDirection: "next", showCompleteScreen: false };
+  const { activeIndex, carouselDirection, showCompleteScreen } = eventState;
   const activeTeam = teams[activeIndex] || teams[0];
   const previousTeam = activeIndex > 0 ? teams[activeIndex - 1] : null;
   const nextTeam = activeIndex < teams.length - 1 ? teams[activeIndex + 1] : null;
 
+  function updateEventState(patch) {
+    setStateBySlug((current) => ({
+      ...current,
+      [slug]: {
+        activeIndex: 0,
+        carouselDirection: "next",
+        showCompleteScreen: false,
+        ...(current[slug] || {}),
+        ...patch,
+      },
+    }));
+  }
+
   useEffect(() => {
     if (activeIndex > Math.max(0, teams.length - 1)) {
-      setActiveIndex(Math.max(0, teams.length - 1));
+      updateEventState({ activeIndex: Math.max(0, teams.length - 1) });
     }
-  }, [activeIndex, teams.length]);
+  }, [activeIndex, teams.length, slug]);
 
   function goToNext() {
-    setCarouselDirection("next");
-    setActiveIndex((current) => Math.min(teams.length - 1, current + 1));
+    updateEventState({
+      carouselDirection: "next",
+      activeIndex: Math.min(teams.length - 1, activeIndex + 1),
+    });
   }
 
   function goToPrevious() {
-    setCarouselDirection("previous");
-    setActiveIndex((current) => Math.max(0, current - 1));
+    updateEventState({
+      carouselDirection: "previous",
+      activeIndex: Math.max(0, activeIndex - 1),
+    });
   }
 
   return (
@@ -896,12 +916,8 @@ function EventoSalidasAdmin({ detail, onBack, onSave, savingTeams, slug }) {
         </div>
       </div>
 
-      {allAssigned ? (
-        <div className="starting-compact-list">
-          {teams.map((team) => (
-            <StartingTeamCompactCard key={team.id} team={team} tournamentName={detail?.name} />
-          ))}
-        </div>
+      {allAssigned || showCompleteScreen ? (
+        <StartingEventCompleteScreen logo={logo} />
       ) : (
         <div className={`starting-carousel ${carouselDirection === "previous" ? "from-left" : "from-right"}`}>
           <div className="starting-carousel-stage">
@@ -930,6 +946,7 @@ function EventoSalidasAdmin({ detail, onBack, onSave, savingTeams, slug }) {
               index={activeIndex}
               logo={logo}
               onNext={goToNext}
+              onComplete={() => updateEventState({ showCompleteScreen: true })}
               onPrevious={goToPrevious}
               onSave={onSave}
               saving={savingTeams.has(activeTeam.id)}
@@ -942,7 +959,6 @@ function EventoSalidasAdmin({ detail, onBack, onSave, savingTeams, slug }) {
           <div className="starting-carousel-actions">
             <button className="button subtle" type="button" onClick={goToPrevious} disabled={activeIndex === 0}>Anterior</button>
             <span>{Math.min(activeIndex + 1, teams.length)} / {teams.length}</span>
-            <button className="button primary" type="button" onClick={goToNext} disabled={activeIndex >= teams.length - 1}>Siguiente</button>
           </div>
         </div>
       )}
@@ -950,7 +966,7 @@ function EventoSalidasAdmin({ detail, onBack, onSave, savingTeams, slug }) {
   );
 }
 
-function StartingTeamAssignCard({ index, logo, onNext, onPrevious, onSave, saving, team, total, tournamentName }) {
+function StartingTeamAssignCard({ index, logo, onComplete, onNext, onPrevious, onSave, saving, team, total, tournamentName }) {
   const [draft, setDraft] = useState(() => teamToStartingEventDraft(team));
   const handicapRefs = useRef([]);
   const participantRefs = useRef([]);
@@ -975,6 +991,17 @@ function StartingTeamAssignCard({ index, logo, onNext, onPrevious, onSave, savin
   }
 
   const handicapTotal = calculateHandicapTotal(draft.handicaps);
+  const isLastTeam = index >= total - 1;
+
+  async function saveAndContinue() {
+    const saved = await onSave(draft);
+    if (saved === false) return;
+    if (isLastTeam) {
+      onComplete();
+      return;
+    }
+    onNext();
+  }
 
   return (
     <article className="starting-assign-card active">
@@ -1028,12 +1055,22 @@ function StartingTeamAssignCard({ index, logo, onNext, onPrevious, onSave, savin
       </div>
       <div className="starting-card-footer">
         <button className="button subtle" type="button" onClick={onPrevious} disabled={index === 0}>Anterior</button>
-        <button className="button primary" type="button" onClick={() => onSave(draft)} disabled={saving}>
-          {saving ? "Guardando..." : "Guardar asignacion"}
+        <button className="button primary" type="button" onClick={saveAndContinue} disabled={saving}>
+          {saving ? "Guardando..." : isLastTeam ? "Finalizar" : "Siguiente"}
         </button>
-        <button className="button subtle" type="button" onClick={onNext} disabled={index >= total - 1}>Siguiente</button>
       </div>
     </article>
+  );
+}
+
+function StartingEventCompleteScreen({ logo }) {
+  return (
+    <section className="starting-complete-screen">
+      {logo && <img src={logo} alt="" />}
+      <div>
+        <p>BUEN JUEGO A TODOS</p>
+      </div>
+    </section>
   );
 }
 
